@@ -24,8 +24,19 @@ must pass before merge; no skipped tests on `main`.
 
 ## Environments
 
-Set up in phase A2 (EAS profiles: `development` → local Supabase, `preview`/`production` →
-BalanceBuddy production). Until then the app has no backend wiring.
+No URL or key literals in source — `src/lib/config.ts` reads these and fails fast when unset:
+
+| Variable                               | Meaning                                                              |
+| -------------------------------------- | -------------------------------------------------------------------- |
+| `EXPO_PUBLIC_SUPABASE_URL`             | BalanceBuddy Supabase URL (local stack in dev, production in builds) |
+| `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable (anon) key — safe to ship; **never** the service role    |
+| `EXPO_PUBLIC_FUNCTIONS_BASE_URL`       | Optional — derived from the Supabase URL when unset                  |
+
+- **Local dev:** `cp .env.example .env`; run `supabase start` in `../../balancebuddy-web`; paste
+  the anon key from `supabase status`. The home screen shows which backend it resolved.
+- **Builds:** URLs come from the profile `env` in `eas.json`; the publishable key is set once via
+  `eas env:create --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value <key>` (value: Supabase
+  dashboard → Settings → API). Publishable, so plain visibility is fine.
 
 ## Store setup (one-time)
 
@@ -59,6 +70,8 @@ Do these during Milestone A — account verification is the long pole (days to w
 Steps appear here the moment they first exist (never retrospectively), so this section is always
 how the app ships _today_.
 
-- **Dev build (exists now):** `npm start` against a simulator/device.
-- Preview/production builds: added in A2 (EAS profiles).
+- **Dev server (exists now):** `npm start` against a simulator/device.
+- **Internal build (exists now):** `eas build --profile preview --platform ios|android` — signed
+  internal-distribution build against production BalanceBuddy. Needs `eas login` + `eas init`
+  (once) and the publishable key in `eas env`.
 - Beta distribution: added in F3. Production release + OTA updates: added in H3.
