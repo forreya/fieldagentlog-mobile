@@ -41,3 +41,8 @@ example
 # generated native folders
 /ios
 /android
+
+# env files (A2 adds .env.example, which IS committed)
+.env
+.env.*
+!.env.example
