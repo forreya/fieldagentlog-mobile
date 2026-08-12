@@ -14,21 +14,20 @@ We deliberately differ in three places - **don't "fix" these back**:
 
 ---
 
-## Stage 0 - Accounts (one-time, start now)
+## Stage 0 - Accounts (one-time)
 
-**Decide first: who owns the accounts, Gena or the client org.** It sets who can publish, who is
-paid, and whose name is on the listing. Changing it later means transferring the app.
+**Settled 2026-08-12: FieldAgentLog reuses Gena Go's existing accounts** - Apple Developer, Play
+Console and Expo. It ships as a second app under the same teams, so the store listings carry the
+same seller name as Gena Go. No new enrolment, no D-U-N-S wait; Play production access is already
+unlocked by the published app, so new-account closed-testing rules don't apply.
 
-1. **Apple Developer Program** - enrol at developer.apple.com, $99/yr. Choose **Organization**
-   (needs a D-U-N-S number - free, allow up to 2 weeks; personal accounts publish under an
-   individual's name).
-2. **Google Play Console** - $25 once. Choose an **organisation** account: a _personal_ account
-   must run a 14-day closed test with 12+ testers before it may go to production. An org account
-   need not.
-3. **Expo** - one account for the org; developers are invited to it.
-4. **Privacy policy URL** - both stores require a public one, and this app collects precise
+Still needed:
+
+1. **Privacy policy URL** - both stores require a public one, and this app collects precise
    location, photos and email. Blocker for submission, not for building. Host it on
    fieldagentlog.com.
+2. **Roles** - whoever runs releases needs Admin/App Manager in App Store Connect and equivalent
+   in Play Console (already true for anyone shipping Gena Go).
 
 ## Stage 1 - Project setup (one-time)
 
