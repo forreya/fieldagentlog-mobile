@@ -54,6 +54,8 @@ eas credentials    # iOS: distribution cert + provisioning profile; Android: upl
 
 **Apple** - App Store Connect > Apps > **+**:
 
+- Team: Gena Property Management Limited, Team ID `HQ57RV6WZK` (so the `apple-app-site-association`
+  appID at phase G4 is `HQ57RV6WZK.com.fieldagentlog.app`).
 - Name `FieldAgentLog` · Bundle ID `com.fieldagentlog.app` · SKU `fieldagentlog` · Language en-GB.
 - If the bundle ID isn't listed, create it first under Certificates, IDs & Profiles > Identifiers.
 
