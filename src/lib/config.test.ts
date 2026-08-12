@@ -32,7 +32,7 @@ describe("functionsBaseUrl", () => {
 		expect(functionsBaseUrl({ ...PROD, EXPO_PUBLIC_FUNCTIONS_BASE_URL: "https://fns.example.com/" })).toBe("https://fns.example.com");
 	});
 
-	test("throws when nothing usable is set — the wizard has no backend", () => {
+	test("throws when nothing usable is set - the wizard has no backend", () => {
 		expect(() => functionsBaseUrl({})).toThrow(ConfigError);
 	});
 });

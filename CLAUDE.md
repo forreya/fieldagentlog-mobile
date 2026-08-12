@@ -1,4 +1,4 @@
-# CLAUDE.md — FieldAgentLog mobile
+# CLAUDE.md - FieldAgentLog mobile
 
 Invariants only: things whose ignorance causes a wrong edit. Budget: ≤120 lines, prune on every
 consolidation phase. How-to-run lives in README.md; module map in docs/architecture.md (from B7).
@@ -13,7 +13,7 @@ BalanceBuddy Edge Functions (`../../balancebuddy-web/supabase/functions/`) and a
 ## Security invariants
 
 - **No service-role key in this repo, ever.** Ship only the publishable (anon) key.
-- External personas (agent, cleaner) have **no direct DB access** — broker Edge Functions only
+- External personas (agent, cleaner) have **no direct DB access** - broker Edge Functions only
   (`field-agent`, `cleaner`, `site-report`). Staff read PostgREST under RLS. Never widen either.
 - The inspector wizard is **keyless**: per-visit token, works fully signed-out. Don't gate it on
   auth, config, or Supabase being reachable.
@@ -25,20 +25,20 @@ BalanceBuddy Edge Functions (`../../balancebuddy-web/supabase/functions/`) and a
 - **Idempotency keys**: attendance + site reports carry a client `client_id` (server-unique);
   visit submit is idempotent on its token. Generate keys at capture time, never at send time.
 - Site reports post **only after every photo has a server ref**; refs persist as they land.
-- N/A verdicts don't advance a check's cadence (server rule — don't imply otherwise in UI).
+- N/A verdicts don't advance a check's cadence (server rule - don't imply otherwise in UI).
 - Never reload/update the app mid-visit; updates apply on cold start only.
 
-## Code rules (lint-enforced — don't fight them, split)
+## Code rules (lint-enforced - don't fight them, split)
 
 - Size budgets: screens ≤300 lines, modules ≤250, functions ≤60. Tabs, printWidth 150.
 - Layers: `src/app` routes render + dispatch · hooks orchestrate · `src/api` network ·
   `src/db` storage · `src/sync` retries/ordering. A screen that fetches is wrong even if it works.
 - Tests land in the same PR as the logic they test. No skipped tests on `main`.
-- Mirrored files (listed in `shared-mirror.json`, from A4) must match `../fieldagent` — CI fails
+- Mirrored files (listed in `shared-mirror.json`, from A4) must match `../fieldagent` - CI fails
   on drift; sync both repos in the same piece of work.
 
 ## Docs
 
 One home per fact; link, don't copy. Budgets: this file ≤120, README ≤250, architecture.md ≤200.
-`../FIELDAGENT-MOBILE-PLAN.md` is a planning artifact — do not load it into context routinely.
+`../FIELDAGENT-MOBILE-PLAN.md` is a planning artifact - do not load it into context routinely.
 Platform-facing changes also update `../gena-docs/fieldagentlog/`.

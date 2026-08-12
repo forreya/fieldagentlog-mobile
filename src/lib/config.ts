@@ -3,7 +3,7 @@
 //
 // EXPO_PUBLIC_* values come from .env in development and the EAS build
 // profile's env in builds. They are inlined into the bundle and visible to
-// anyone holding the app — publishable key only, never a service-role key.
+// anyone holding the app - publishable key only, never a service-role key.
 //
 // The two front doors have separate requirements, mirroring the web app:
 // the keyless inspector wizard needs only the functions base URL, the
@@ -31,7 +31,7 @@ function readUrl(env: Env, name: string): string | null {
 	return raw;
 }
 
-/** Supabase URL + publishable key — required by the signed-in app only. */
+/** Supabase URL + publishable key - required by the signed-in app only. */
 export function supabaseConfig(env: Env = process.env): { url: string; publishableKey: string } {
 	const url = readUrl(env, "EXPO_PUBLIC_SUPABASE_URL");
 	const publishableKey = (env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
@@ -47,7 +47,7 @@ export function deriveFunctionsBaseUrl(supabaseUrl: string): string {
 	return m ? `https://${m[1]}.functions.supabase.co` : `${supabaseUrl}/functions/v1`;
 }
 
-/** Where the token-gated visit-* Edge Functions live — the wizard's only config. */
+/** Where the token-gated visit-* Edge Functions live - the wizard's only config. */
 export function functionsBaseUrl(env: Env = process.env): string {
 	const explicit = readUrl(env, "EXPO_PUBLIC_FUNCTIONS_BASE_URL");
 	if (explicit) return explicit;
