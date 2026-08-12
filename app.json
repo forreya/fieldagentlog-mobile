@@ -41,6 +41,13 @@
 		"experiments": {
 			"typedRoutes": true,
 			"reactCompiler": true
-		}
+		},
+		"extra": {
+			"router": {},
+			"eas": {
+				"projectId": "900e462b-99b3-404c-8e4a-2023cc4ba68f"
+			}
+		},
+		"owner": "forreya"
 	}
 }
