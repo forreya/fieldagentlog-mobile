@@ -38,40 +38,16 @@ No URL or key literals in source - `src/lib/config.ts` reads these and fails fas
   `eas env:create --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value <key>` (value: Supabase
   dashboard → Settings → API). Publishable, so plain visibility is fine.
 
-## Store setup (one-time)
+## Releasing
 
-Do these during Milestone A - account verification is the long pole (days to weeks).
+Full process, registration through first public version and the routine loop after it:
+**[docs/releasing.md](docs/releasing.md)**. Start the account enrolment early - it is the long
+pole (days to weeks) and blocks everything else.
 
-**Apple**
+Where the app stands today:
 
-1. Enrol in the Apple Developer Program as an **organisation** (needs a D-U-N-S number).
-2. App Store Connect → Users: add the developers.
-3. Certificates/profiles: none by hand - EAS manages signing (`eas credentials`).
-4. App Store Connect → New App: name **FieldAgentLog**, bundle id **`com.fieldagentlog.app`**,
-   SKU `fieldagentlog`. TestFlight internal testing works from the first uploaded build, no
-   review needed.
-
-**Google**
-
-1. Create a Play Console developer account - **organisation** account. (A personal account must
-   run a 14-day / 12-tester closed test before production access; an org account must not.)
-2. Play Console → Create app: **FieldAgentLog**, package **`com.fieldagentlog.app`**.
-3. Accept Play App Signing (default). The app-signing SHA-256 shown there - not the upload key -
-   is what goes in the website's `assetlinks.json` (phase G4).
-
-**EAS (Expo)**
-
-1. `npm i -g eas-cli && eas login` (Expo account, one for the org).
-2. `eas init` - writes the EAS project id into `app.json`.
-3. `eas credentials` per platform once store accounts exist.
-
-## Release runbook
-
-Steps appear here the moment they first exist (never retrospectively), so this section is always
-how the app ships _today_.
-
-- **Dev server (exists now):** `npm start` against a simulator/device.
-- **Internal build (exists now):** `eas build --profile preview --platform ios|android` - signed
-  internal-distribution build against production BalanceBuddy. Needs `eas login` + `eas init`
-  (once) and the publishable key in `eas env`.
-- Beta distribution: added in F3. Production release + OTA updates: added in H3.
+- **Dev server:** `npm start` against a simulator/device.
+- **Internal build:** `eas build --profile preview --platform ios|android` - signed
+  internal-distribution build against production BalanceBuddy.
+- Beta on the stores and production release: see the doc; the app is not ready to submit yet
+  (Apple guideline 4.2 rejects thin apps).
