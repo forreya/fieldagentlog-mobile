@@ -31,3 +31,15 @@ test("default size meets the glove-friendly minimum target", async () => {
 	await render(<Button label="Tap" onPress={jest.fn()} />);
 	expect(screen.getByRole("button")).toHaveStyle({ minHeight: TAP });
 });
+
+test("sizes to its content by default, and fills the width only with block", async () => {
+	// Regression: inside a column container every button silently stretched, so
+	// `block` was a no-op and small/ghost buttons looked like primary ones.
+	await render(<Button label="Intrinsic" onPress={jest.fn()} />);
+	expect(screen.getByRole("button")).toHaveStyle({ alignSelf: "flex-start" });
+});
+
+test("block stretches to the container", async () => {
+	await render(<Button label="Wide" block onPress={jest.fn()} />);
+	expect(screen.getByRole("button")).toHaveStyle({ alignSelf: "stretch" });
+});

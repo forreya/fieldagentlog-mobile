@@ -65,6 +65,10 @@ const styles = StyleSheet.create({
 		borderWidth: 2,
 		borderColor: "transparent",
 		paddingHorizontal: space.s5,
+		// Intrinsic width by default, mirroring the web app's inline-flex .fa-btn.
+		// Without this a button inside any column container silently fills it and
+		// `block` means nothing.
+		alignSelf: "flex-start",
 	},
 	block: { alignSelf: "stretch" },
 	pressed: { transform: [{ scale: 0.98 }] },
