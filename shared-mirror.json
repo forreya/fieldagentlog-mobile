@@ -1,0 +1,20 @@
+{
+	"//": "Files that must stay byte-identical with the FieldAgent web app. See scripts/mirror.mjs and docs/architecture.md. Formatting is deliberately NOT applied to src/shared (see .prettierignore) - reformatting would break the mirror.",
+	"peerRepo": "../fieldagent",
+	"files": [
+		{
+			"local": "src/shared/fireData.ts",
+			"peer": "src/lib/fireData.ts",
+			"sha256": "8516350684ce919649be5835babfca6f31e21f62391230bbbbdc8a13a5dc931c",
+			"why": "Due-date maths, due-level thresholds and dashboard assembly. If these drift, the two clients disagree about whether a fire check is overdue."
+		}
+	],
+	"notYetMirrored": {
+		"//": "Shared in spirit, blocked on a small web-side refactor - see docs/architecture.md.",
+		"src/lib/cluster.ts": "Pure, but type-imports LatLng from geocode.ts, which uses localStorage. Needs LatLng moved to its own module.",
+		"src/lib/nearby.ts": "Runtime-imports geocode.ts (localStorage).",
+		"src/lib/geocode.ts": "Caches in localStorage; needs the cache injected rather than assumed.",
+		"src/lib/types.ts": "Contract types are identical, but the queue types carry Blob; mobile stores photo bytes as files on disk.",
+		"src/lib/sync.ts": "buildSubmitBody is pure; the rest imports the web IndexedDB layer."
+	}
+}

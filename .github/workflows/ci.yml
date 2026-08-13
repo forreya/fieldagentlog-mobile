@@ -21,4 +21,8 @@ jobs:
         run: npm run lint -- --max-warnings 0
       - name: Test
         run: npm test
-      # A4 adds the shared-mirror drift check here.
+      # CI cannot see the peer repo, so it verifies the local copies are
+      # unchanged since their last deliberate sync. `npm run mirror:compare`
+      # (needs ../fieldagent on disk) is the human-run check for web-side drift.
+      - name: Shared mirror
+        run: npm run mirror:verify

@@ -1,0 +1,11 @@
+# Mirrored byte-for-byte from the FieldAgent web app, which formats with 2
+# spaces. Reformatting to this repo's tabs would break the mirror on the first
+# save. See shared-mirror.json. Tests written here are ours, so they are not
+# exempt.
+src/shared/
+!src/shared/*.test.ts
+
+# Generated
+.expo/
+dist/
+node_modules/
