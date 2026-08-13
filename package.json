@@ -58,7 +58,7 @@
 		"web": "expo start --web",
 		"lint": "expo lint --max-warnings 0",
 		"typecheck": "tsc --noEmit",
-		"test": "jest --ci",
+		"test": "jest --ci --maxWorkers=50%",
 		"format": "prettier --write .",
 		"mirror:verify": "node scripts/mirror.mjs verify",
 		"mirror:compare": "node scripts/mirror.mjs compare",
