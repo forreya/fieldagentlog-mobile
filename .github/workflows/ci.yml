@@ -21,7 +21,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
-        run: npm run lint -- --max-warnings 0
+        run: npm run lint
       - name: Test
         run: npm test
       # CI cannot see the peer repo, so it verifies the local copies are

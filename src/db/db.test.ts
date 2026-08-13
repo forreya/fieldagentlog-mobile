@@ -242,6 +242,13 @@ describe("reports", () => {
 		await expect(saveReport(report())).rejects.toThrow();
 	});
 
+	test("deleting clears a report the server has accepted", async () => {
+		await saveReport(report());
+		await deleteReport("r1");
+		expect(await allReports()).toHaveLength(0);
+		expect(await getReport("r1")).toBeUndefined();
+	});
+
 	test("reading falls back to empty rather than throwing, so the queue UI still renders", async () => {
 		const db = await getDatabase();
 		await db.execAsync("DROP TABLE reports");
