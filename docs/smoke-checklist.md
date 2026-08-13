@@ -13,4 +13,6 @@ every release. One line per scenario; each milestone appends its own. A failure 
 
 ## B - Core plumbing (append at B7)
 
+- [x] A-checks re-run on Android emulator 2026-08-13 (iOS sim + Android both match).
+
 ## C - Inspector wizard (append at C7; includes the airplane-mode basement test)
