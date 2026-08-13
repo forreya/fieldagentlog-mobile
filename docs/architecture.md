@@ -52,3 +52,26 @@ into queue types where mobile stores photo bytes as files on disk.
 `shared-mirror.json` records the specific blocker per file. Unblocking them is a
 small refactor in the web repo (extract the pure parts, inject the cache) and
 should go to its maintainer as a reviewed PR, not a silent push.
+
+## The lockfile must be generated on Linux
+
+`npm install` on macOS silently omits optional dependency subtrees that only
+apply to other platforms. One of ESLint's transitive deps
+(`@unrs/resolver-binding-wasm32-wasi`) pins `@emnapi/core@1.10.0` while
+`@napi-rs/wasm-runtime` wants `^1.7.1`; macOS installs the native binding, never
+resolves the WASM one, and writes a lockfile that `npm ci` on Linux rejects.
+Both GitHub Actions and EAS Build run `npm ci` on Linux, so a macOS-generated
+lockfile breaks CI and every cloud build.
+
+After any dependency change, regenerate the lockfile in a Linux container and
+verify it satisfies both platforms:
+
+```bash
+docker run --rm -v "$PWD":/app -w /app node:24-bookworm \
+  bash -c "rm -f package-lock.json && npm install --package-lock-only"
+docker run --rm -v "$PWD":/app -w /app node:24-bookworm npm ci   # must pass
+npm ci                                                            # must also pass
+```
+
+A lockfile written this way works on both: npm skips optional entries that do
+not match the current platform, but it cannot invent ones that are missing.
