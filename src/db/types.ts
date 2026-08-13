@@ -43,6 +43,9 @@ export interface VisitRecord {
 	/** Stamped when the visit is first opened; the true start time for the logbook. */
 	started_at: number;
 	updated_at: number;
+	/** Set when the inspector hits submit. Persisted rather than held in memory
+	 *  so a submit queued underground still goes after the app is killed. */
+	submit_requested_at?: number;
 	/** Present once submitted - the visit is then locked. */
 	submitted: { visit_id: string; logbook_pdf_url: string; completed_at: string } | null;
 	/** True when a cleaner launched this visit from their own app. */
