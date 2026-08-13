@@ -19,12 +19,19 @@ test("a disabled button is inert and says so to assistive tech", async () => {
 	expect(button).toBeDisabled();
 });
 
-test("a busy button swaps the label for a spinner and blocks double-submits", async () => {
+test("a busy button blocks double-submits", async () => {
 	const onPress = jest.fn();
 	await render(<Button label="Submitting" busy onPress={onPress} />);
-	expect(screen.queryByText("Submitting")).toBeNull();
 	fireEvent.press(screen.getByRole("button"));
 	expect(onPress).not.toHaveBeenCalled();
+	expect(screen.getByRole("button", { busy: true })).toBeTruthy();
+});
+
+test("a busy button keeps its label mounted, so it does not collapse mid-submit", async () => {
+	// Found on Android: swapping the label out shrank the button to a square
+	// around the spinner, exactly as the user tapped Submit.
+	await render(<Button label="Submitting" busy onPress={jest.fn()} />);
+	expect(screen.getByText("Submitting")).toHaveStyle({ opacity: 0 });
 });
 
 test("default size meets the glove-friendly minimum target", async () => {

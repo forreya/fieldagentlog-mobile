@@ -1,17 +1,27 @@
-// The error taxonomy for the token-gated visit endpoints. Pure: no fetch, no
-// platform. Ported from the web app's src/lib/api.ts, which is where the
-// user-facing wording comes from - it is field-tested, so it is copied verbatim
-// rather than reworded.
+// One error taxonomy for both front doors: the keyless visit endpoints and the
+// session-JWT brokers. Pure - no fetch, no platform.
 //
-// Three kinds, because the app does three different things with them:
-//   dead_end - the link itself is finished. Show a terminal screen, never retry.
-//   network  - we never got an answer. Queue it; retry when signal returns.
-//   server   - the server answered badly. Retry, but slower.
+// The visit wording is ported verbatim from the web app's src/lib/api.ts; it is
+// field-tested copy and rewording it would only make it worse.
 //
-// `retryable` is derived here rather than in the sync engine, so there is one
-// definition of "worth trying again" instead of two that can disagree.
+// The kinds exist because the app does something different with each: show a
+// terminal screen, send the user to sign in, say "not yours", report a bug,
+// queue for later, or back off. `retryable` is derived here so the sync engine
+// and the screens cannot end up with two definitions of "worth trying again".
 
-export type ApiErrorKind = "dead_end" | "network" | "server";
+export type ApiErrorKind =
+	/** The visit link itself is finished. Terminal screen; never retry. */
+	| "dead_end"
+	/** The session is gone or invalid. Sign in again; never retry as-is. */
+	| "auth"
+	/** Signed in, but not allowed this block/site. Not a retry, not a re-login. */
+	| "forbidden"
+	/** We asked for something the server refused to accept. A bug or bad input. */
+	| "invalid"
+	/** No answer at all: no signal, DNS, or our own timeout. Queue and retry. */
+	| "network"
+	/** The server answered badly. Retry, more slowly. */
+	| "server";
 
 /** Why a link is finished, used to pick the right dead-end copy. */
 export type DeadEndReason = "expired" | "used" | "revoked" | "invalid" | "unknown";
@@ -35,9 +45,12 @@ export class ApiError extends Error {
 		Object.setPrototypeOf(this, ApiError.prototype);
 	}
 
-	/** Whether trying again could ever succeed. A dead link never can. */
+	/** Whether trying the same request again could ever succeed. Only a missing
+	 *  answer or a struggling server can; a dead link, a bad session, a refusal
+	 *  or a malformed request will fail identically forever, and retrying them
+	 *  is how a sync queue jams behind one poisoned item. */
 	get retryable(): boolean {
-		return this.kind !== "dead_end";
+		return this.kind === "network" || this.kind === "server";
 	}
 }
 
@@ -95,4 +108,43 @@ export function offlineError(): ApiError {
 
 export function timeoutError(): ApiError {
 	return new ApiError("network", "That took too long. Check your signal and try again.", { timedOut: true });
+}
+
+// ── Broker endpoints (session-JWT: field-agent, cleaner, site-report) ────────
+// Different failure vocabulary from the visit endpoints: there is no "dead
+// link" here, but there is "your session has gone" and "that block is not
+// yours", and the app must react to those very differently.
+
+/**
+ * Pull a human message out of a broker error body. Two shapes reach us, which
+ * is only visible when calling the functions directly rather than through
+ * supabase-js:
+ *   the Supabase gateway  -> { code, message }   (bad or missing JWT)
+ *   the function itself   -> { error }           (its own refusal)
+ * Verified against production, 2026-08-13.
+ */
+export function brokerMessage(body: unknown): string | null {
+	if (!body || typeof body !== "object") return null;
+	const b = body as { error?: unknown; message?: unknown };
+	if (typeof b.error === "string" && b.error.trim()) return b.error.trim();
+	if (typeof b.message === "string" && b.message.trim()) return b.message.trim();
+	return null;
+}
+
+/** Map a broker HTTP status to an error, preferring the server's own wording. */
+export function classifyBrokerStatus(status: number, body?: unknown): ApiError {
+	const said = brokerMessage(body);
+	if (status === 401) {
+		return new ApiError("auth", said ?? "Your session has expired. Sign in again.", { status });
+	}
+	if (status === 403) {
+		return new ApiError("forbidden", said ?? "You don't have access to that.", { status });
+	}
+	if (status === 408 || status === 429) {
+		return new ApiError("network", said ?? "The server is busy. Try again in a moment.", { status });
+	}
+	if (status >= 500) {
+		return new ApiError("server", said ?? "The server had a problem. Try again in a moment.", { status });
+	}
+	return new ApiError("invalid", said ?? "That request couldn't be completed.", { status });
 }

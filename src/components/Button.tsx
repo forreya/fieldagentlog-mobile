@@ -40,11 +40,11 @@ export function Button({ label, onPress, variant = "primary", size = "md", disab
 				style,
 			]}
 		>
-			{busy ? (
-				<ActivityIndicator color={labelColors[variant]} />
-			) : (
-				<Text style={[styles.label, textSizes[size], { color: labelColors[variant] }]}>{label}</Text>
-			)}
+			{/* The label stays mounted while busy, just invisible, so the button
+			    keeps its width instead of collapsing to a square around the
+			    spinner - a jump that lands exactly when someone taps Submit. */}
+			<Text style={[styles.label, textSizes[size], { color: labelColors[variant] }, busy && styles.hidden]}>{label}</Text>
+			{busy ? <ActivityIndicator style={styles.spinner} size="small" color={labelColors[variant]} /> : null}
 		</Pressable>
 	);
 }
@@ -71,6 +71,8 @@ const styles = StyleSheet.create({
 		alignSelf: "flex-start",
 	},
 	block: { alignSelf: "stretch" },
+	hidden: { opacity: 0 },
+	spinner: { position: "absolute" },
 	pressed: { transform: [{ scale: 0.98 }] },
 	inactive: { opacity: 0.45 },
 	label: { fontFamily: fonts.displayHeavy, letterSpacing: 0.5 },
