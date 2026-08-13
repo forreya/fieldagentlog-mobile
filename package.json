@@ -16,6 +16,7 @@
 		"expo-linking": "~57.0.5",
 		"expo-router": "~57.0.12",
 		"expo-splash-screen": "~57.0.6",
+		"expo-sqlite": "~57.0.1",
 		"expo-status-bar": "~57.0.1",
 		"expo-symbols": "~57.0.2",
 		"expo-system-ui": "~57.0.2",
@@ -33,6 +34,7 @@
 	"devDependencies": {
 		"@testing-library/react-native": "^14.0.1",
 		"@types/jest": "^30.0.0",
+		"@types/node": "^26.2.0",
 		"@types/react": "~19.2.2",
 		"eslint": "^9.0.0",
 		"eslint-config-expo": "~57.0.1",

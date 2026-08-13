@@ -26,4 +26,17 @@ module.exports = defineConfig([
 			"max-lines": ["error", { max: 300, skipBlankLines: true, skipComments: true }],
 		},
 	},
+	{
+		// @types/node is present so the expo-sqlite test mock can use node:sqlite.
+		// That makes Node APIs typecheck inside src/ too, where they would pass
+		// CI and then crash on a phone. Shipped code may not import them.
+		files: ["src/**/*.ts", "src/**/*.tsx"],
+		ignores: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+		rules: {
+			"no-restricted-imports": [
+				"error",
+				{ patterns: [{ group: ["node:*"], message: "Node APIs do not exist in React Native - this would pass CI and crash on device." }] },
+			],
+		},
+	},
 ]);
