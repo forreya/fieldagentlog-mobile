@@ -63,15 +63,15 @@ resolves the WASM one, and writes a lockfile that `npm ci` on Linux rejects.
 Both GitHub Actions and EAS Build run `npm ci` on Linux, so a macOS-generated
 lockfile breaks CI and every cloud build.
 
-After any dependency change, regenerate the lockfile in a Linux container and
-verify it satisfies both platforms:
+After any dependency change, in the same commit:
 
 ```bash
-docker run --rm -v "$PWD":/app -w /app node:24-bookworm \
-  bash -c "rm -f package-lock.json && npm install --package-lock-only"
-docker run --rm -v "$PWD":/app -w /app node:24-bookworm npm ci   # must pass
-npm ci                                                            # must also pass
+npm run lock:linux
 ```
+
+It regenerates the lockfile in a Linux container and verifies `npm ci` passes
+there. Skipping it breaks CI and every EAS build; that has happened twice, so
+the rule is also in CLAUDE.md.
 
 A lockfile written this way works on both: npm skips optional entries that do
 not match the current platform, but it cannot invent ones that are missing.

@@ -56,7 +56,8 @@
 		"format": "prettier --write .",
 		"mirror:verify": "node scripts/mirror.mjs verify",
 		"mirror:compare": "node scripts/mirror.mjs compare",
-		"mirror:update": "node scripts/mirror.mjs update"
+		"mirror:update": "node scripts/mirror.mjs update",
+		"lock:linux": "docker run --rm -v $PWD:/app -w /app node:24-bookworm bash -c 'rm -f package-lock.json && npm install --package-lock-only --no-audit --no-fund' && docker run --rm -v $PWD:/app -w /app node:24-bookworm npm ci --no-audit --no-fund >/dev/null && echo 'lockfile regenerated on linux and verified'"
 	},
 	"private": true,
 	"jest": {

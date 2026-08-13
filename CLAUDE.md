@@ -28,6 +28,17 @@ BalanceBuddy Edge Functions (`../../balancebuddy-web/supabase/functions/`) and a
 - N/A verdicts don't advance a check's cadence (server rule - don't imply otherwise in UI).
 - Never reload/update the app mid-visit; updates apply on cold start only.
 
+## After ANY dependency change, run `npm run lock:linux`
+
+`npm install` on macOS writes a lockfile that `npm ci` on Linux rejects (it
+omits optional subtrees for other platforms). CI and EAS both run `npm ci` on
+Linux, so a macOS-only lockfile breaks every cloud build. This has already
+happened twice. One command, in the same commit as the dependency change:
+
+```bash
+npm run lock:linux    # regenerates in Docker and verifies npm ci passes
+```
+
 ## Code rules (lint-enforced - don't fight them, split)
 
 - Size budgets: screens ≤300 lines, modules ≤250, functions ≤60. Tabs, printWidth 150.
