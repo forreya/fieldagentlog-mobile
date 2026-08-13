@@ -9,6 +9,15 @@
 // the keyless inspector wizard needs only the functions base URL, the
 // signed-in app needs the Supabase URL + publishable key. Each flow asks for
 // its own config so the wizard never depends on sign-in being configured.
+//
+// ── Why the literal process.env references below matter ─────────────────────
+// Expo inlines EXPO_PUBLIC_* at build time by textually replacing
+// `process.env.EXPO_PUBLIC_NAME` in the source. A dynamic read - env[name],
+// destructuring, a computed key - is invisible to that transform and stays
+// undefined in a release build. It still works in development, because the dev
+// server populates process.env at runtime, so the mistake ships silently and
+// only appears in a standalone build as "not configured". Read each variable
+// once, literally, here.
 
 export class ConfigError extends Error {
 	constructor(message: string) {
@@ -18,6 +27,13 @@ export class ConfigError extends Error {
 }
 
 type Env = Record<string, string | undefined>;
+
+/** The build-time snapshot. Each name appears literally so Expo can inline it. */
+const BUILD_ENV: Env = {
+	EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
+	EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+	EXPO_PUBLIC_FUNCTIONS_BASE_URL: process.env.EXPO_PUBLIC_FUNCTIONS_BASE_URL,
+};
 
 function readUrl(env: Env, name: string): string | null {
 	const raw = (env[name] ?? "").trim().replace(/\/+$/, "");
@@ -32,7 +48,7 @@ function readUrl(env: Env, name: string): string | null {
 }
 
 /** Supabase URL + publishable key - required by the signed-in app only. */
-export function supabaseConfig(env: Env = process.env): { url: string; publishableKey: string } {
+export function supabaseConfig(env: Env = BUILD_ENV): { url: string; publishableKey: string } {
 	const url = readUrl(env, "EXPO_PUBLIC_SUPABASE_URL");
 	const publishableKey = (env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
 	const missing = [!url && "EXPO_PUBLIC_SUPABASE_URL", !publishableKey && "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY"].filter(Boolean);
@@ -48,7 +64,7 @@ export function deriveFunctionsBaseUrl(supabaseUrl: string): string {
 }
 
 /** Where the token-gated visit-* Edge Functions live - the wizard's only config. */
-export function functionsBaseUrl(env: Env = process.env): string {
+export function functionsBaseUrl(env: Env = BUILD_ENV): string {
 	const explicit = readUrl(env, "EXPO_PUBLIC_FUNCTIONS_BASE_URL");
 	if (explicit) return explicit;
 	const supabaseUrl = readUrl(env, "EXPO_PUBLIC_SUPABASE_URL");
@@ -57,7 +73,7 @@ export function functionsBaseUrl(env: Env = process.env): string {
 }
 
 /** For About/dev screens: name the backend without throwing or leaking keys. */
-export function backendSummary(env: Env = process.env): string {
+export function backendSummary(env: Env = BUILD_ENV): string {
 	try {
 		return new URL(supabaseConfig(env).url).host;
 	} catch {

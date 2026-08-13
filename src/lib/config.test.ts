@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { backendSummary, ConfigError, deriveFunctionsBaseUrl, functionsBaseUrl, supabaseConfig } from "./config";
 
 const PROD = { EXPO_PUBLIC_SUPABASE_URL: "https://etkiptvblskvyfzdbsic.supabase.co", EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x" };
@@ -46,4 +49,27 @@ test("backendSummary never throws and never contains the key", () => {
 	expect(backendSummary({})).toBe("not configured");
 	expect(backendSummary(PROD)).toBe("etkiptvblskvyfzdbsic.supabase.co");
 	expect(backendSummary(PROD)).not.toContain("sb_publishable");
+});
+
+describe("build-time inlining", () => {
+	// Not a behaviour test: a guard on the source itself. Expo inlines
+	// EXPO_PUBLIC_* by textually replacing `process.env.EXPO_PUBLIC_NAME`, so a
+	// dynamic read compiles to undefined in a release build while continuing to
+	// work in development. That shipped once already ("Backend: not configured"
+	// on the first standalone build) and no runtime test can catch it, because
+	// jest sets process.env at runtime like the dev server does.
+	const source = readFileSync(join(__dirname, "config.ts"), "utf8");
+
+	test.each(["EXPO_PUBLIC_SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "EXPO_PUBLIC_FUNCTIONS_BASE_URL"])(
+		"%s is read as a literal process.env member so Expo can inline it",
+		(name) => {
+			expect(source).toContain(`process.env.${name}`);
+		},
+	);
+
+	test("no dynamic process.env access, which the inliner cannot see", () => {
+		expect(source).not.toMatch(/process\.env\s*\[/);
+		// `env: Env = process.env` would also defeat inlining.
+		expect(source).not.toMatch(/=\s*process\.env\s*[;,)]/);
+	});
 });
