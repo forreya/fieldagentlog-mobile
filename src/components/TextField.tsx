@@ -14,6 +14,9 @@ interface Props {
 	multiline?: boolean;
 	/** For codes and links, where letter shapes have to be distinguishable. */
 	mono?: boolean;
+	/** Masks the value. Also turns off the suggestion strip, which on Android
+	 *  will otherwise offer a password back to the next field it sees. */
+	secure?: boolean;
 	keyboardType?: KeyboardTypeOptions;
 	inputMode?: "url" | "email";
 	autoCapitalize?: "none" | "words" | "sentences";
@@ -41,6 +44,7 @@ export function TextField({
 	error,
 	multiline,
 	mono,
+	secure,
 	keyboardType,
 	inputMode,
 	autoCapitalize = "sentences",
@@ -68,6 +72,8 @@ export function TextField({
 				autoCorrect={false}
 				spellCheck={false}
 				multiline={multiline}
+				secureTextEntry={secure}
+				textContentType={secure ? "password" : undefined}
 				returnKeyType={returnKeyType}
 				onSubmitEditing={onSubmit}
 				style={[styles.input, multiline && styles.multiline, mono && styles.mono, error ? styles.bad : null]}

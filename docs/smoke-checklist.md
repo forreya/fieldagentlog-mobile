@@ -9,6 +9,7 @@ Boxes stay **unticked**: this is a template to re-run, not a record. Log each ru
 | -------------- | -------------------------- | ------------------------------------------------------------------------------ |
 | B7, 2026-08-13 | Android emulator + iOS sim | A and B pass; offline/online transition verified live                          |
 | C7, 2026-08-14 | Android emulator + iOS sim | A-C pass. Found two cold-start bugs and one poisoned-queue bug; all fixed here |
+| D1, 2026-08-14 | Android preview APK        | Offline cold start passes on an installed build; env reached the bundle        |
 
 ## A - Foundations
 
@@ -54,5 +55,7 @@ The last two are the ones that caught real bugs: the queue used to be a set of t
 after a force-stop the app was holding nothing it could see - the submit never went, and the startup
 sweep deleted the queued photos of any visit that had not been reopened.
 
-**Not testable in Expo Go:** a cold start with no signal at all, because the JS bundle comes from
-Metro over the network. Verify that on a preview build before release.
+- [ ] On a **preview build** (not Expo Go): airplane mode, force-stop, launch. The app opens.
+
+That last one cannot be done in Expo Go at all - the JS bundle comes from Metro over the network -
+so it needs an installed build. Verified on the Android preview build, 2026-08-14.

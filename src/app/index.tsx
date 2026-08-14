@@ -4,7 +4,6 @@ import { StyleSheet, Text } from "react-native";
 import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
 import { StatusPill } from "@/components/StatusPill";
-import { backendSummary } from "@/lib/config";
 import { useSyncStatus } from "@/sync/useSyncStatus";
 import { APP_NAME } from "@/lib/constants";
 import { colors, fonts, space } from "@/theme/tokens";
@@ -21,8 +20,9 @@ export default function Index() {
 				<Button label="Enter a visit link" size="lg" block onPress={() => router.push("/enter-code")} />
 			</Card>
 			<Card>
-				<Text style={styles.h}>Signing in</Text>
-				<Text style={styles.p}>Accounts for staff, field agents and cleaners arrive in a later build. Backend: {backendSummary()}.</Text>
+				<Text style={styles.h}>Work here?</Text>
+				<Text style={styles.p}>Staff, field agents and cleaners sign in to see the blocks and checks due to them.</Text>
+				<Button label="Sign in" variant="ghost" onPress={() => router.push("/login")} />
 			</Card>
 			<Link href="/gallery" style={styles.link}>
 				Component gallery
