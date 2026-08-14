@@ -33,6 +33,15 @@ function referencedPhotoIds(record: VisitRecord): Set<string> {
 	return ids;
 }
 
+/** Forget a photo an answer points at but the queue no longer holds. */
+function clearPhotoReference(record: VisitRecord, localId: string): VisitRecord {
+	const results = { ...record.results };
+	for (const [checkId, result] of Object.entries(results)) {
+		if (result.photo_local_id === localId) results[checkId] = { ...result, photo_local_id: null };
+	}
+	return { ...record, results };
+}
+
 /** Record a photo's server ref on whichever answer was waiting for it. */
 function applyRef(record: VisitRecord, localId: string, ref: string): VisitRecord {
 	const results = { ...record.results };
@@ -58,7 +67,21 @@ export async function pushVisit(record: VisitRecord): Promise<void> {
 	let current = record;
 	const referenced = referencedPhotoIds(current);
 
-	for (const photo of await pendingPhotosForToken(current.token)) {
+	const queued = await pendingPhotosForToken(current.token);
+
+	// A check pointing at a photo that has no queue row can never be resolved,
+	// and readyToSubmit would stay false forever - a visit stuck on the phone
+	// with no way to finish it. Losing one photo is bad; losing the whole
+	// inspection is worse, so the dangling reference is dropped.
+	const queuedIds = new Set(queued.map((p) => p.local_id));
+	for (const localId of referenced) {
+		if (queuedIds.has(localId)) continue;
+		current = clearPhotoReference(current, localId);
+		referenced.delete(localId);
+		await saveVisit(current);
+	}
+
+	for (const photo of queued) {
 		// Orphan: its answer was changed or cleared. Drop it rather than spend
 		// a field worker's data uploading it.
 		if (!referenced.has(photo.local_id)) {

@@ -2,6 +2,7 @@ import { StyleSheet, Text, TextInput, View } from "react-native";
 
 import { DueChip, FrequencyBadge, RefTag } from "@/components/Badges";
 import { Button } from "@/components/Button";
+import { PhotoCapture } from "@/components/PhotoCapture";
 import { Card, Screen } from "@/components/Screen";
 import { SeveritySelect, VerdictControl } from "@/components/VerdictControl";
 import { colors, fonts, space } from "@/theme/tokens";
@@ -51,29 +52,47 @@ export function CheckStep({ state, dispatch }: { state: WizardState; dispatch: (
 
 			<VerdictControl value={result.verdict} onChange={(verdict) => dispatch({ type: "SET_VERDICT", checkId: check.id, verdict })} />
 
-			{isFail ? (
-				<Card>
-					<Text style={styles.label}>
-						Severity <Text style={styles.required}>- required</Text>
-					</Text>
-					<SeveritySelect value={result.severity} onChange={(severity) => dispatch({ type: "SET_SEVERITY", checkId: check.id, severity })} />
-
-					<Text style={styles.label}>
-						What&apos;s wrong? <Text style={styles.required}>- required</Text>
-					</Text>
-					<TextInput
-						accessibilityLabel="What's wrong?"
-						value={result.note}
-						onChangeText={(note) => dispatch({ type: "SET_NOTE", checkId: check.id, note })}
-						placeholder="Describe the fault so it can be fixed."
-						placeholderTextColor={colors.plateMuted}
-						multiline
-						style={styles.note}
-					/>
-					<Text style={styles.hint}>Photos arrive in the next phase.</Text>
-				</Card>
-			) : null}
+			{isFail ? <FailDetail state={state} dispatch={dispatch} checkId={check.id} /> : null}
 		</Screen>
+	);
+}
+
+/** Everything a failure needs before it can be recorded: severity, a note
+ *  saying what is wrong, and optionally a photo. Split out because the check
+ *  screen is otherwise doing two jobs. */
+function FailDetail({ state, dispatch, checkId }: { state: WizardState; dispatch: (a: WizardAction) => void; checkId: string }) {
+	const result = resultFor(state, checkId);
+	return (
+		<Card>
+			<Text style={styles.label}>
+				Severity <Text style={styles.required}>- required</Text>
+			</Text>
+			<SeveritySelect value={result.severity} onChange={(severity) => dispatch({ type: "SET_SEVERITY", checkId, severity })} />
+
+			<Text style={styles.label}>
+				What&apos;s wrong? <Text style={styles.required}>- required</Text>
+			</Text>
+			<TextInput
+				accessibilityLabel="What's wrong?"
+				value={result.note}
+				onChangeText={(note) => dispatch({ type: "SET_NOTE", checkId, note })}
+				placeholder="Describe the fault so it can be fixed."
+				placeholderTextColor={colors.plateMuted}
+				multiline
+				style={styles.note}
+			/>
+
+			<Text style={styles.label}>
+				Photo <Text style={styles.optional}>- optional</Text>
+			</Text>
+			<PhotoCapture
+				token={state.record.token}
+				checkId={checkId}
+				result={result}
+				onCaptured={(localId) => dispatch({ type: "SET_PHOTO", checkId, localId })}
+				onCleared={() => dispatch({ type: "CLEAR_PHOTO", checkId })}
+			/>
+		</Card>
 	);
 }
 
@@ -85,6 +104,7 @@ const styles = StyleSheet.create({
 	resp: { fontFamily: fonts.body, fontSize: 13, color: colors.plateMuted },
 	label: { fontFamily: fonts.display, fontSize: 13, letterSpacing: 0.6, textTransform: "uppercase", color: colors.plateMuted },
 	required: { color: colors.fail, letterSpacing: 0 },
+	optional: { color: colors.plateMuted, letterSpacing: 0 },
 	note: {
 		minHeight: 96,
 		borderWidth: 1,

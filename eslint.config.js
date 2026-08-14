@@ -27,6 +27,16 @@ module.exports = defineConfig([
 		},
 	},
 	{
+		// A `describe` is a container, not a function with logic, so the
+		// function-length budget only pushes tests into arbitrary fragments.
+		// The file-length budget still applies, so suites cannot sprawl.
+		files: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+		rules: {
+			"max-lines-per-function": "off",
+			"max-lines": ["error", { max: 400, skipBlankLines: true, skipComments: true }],
+		},
+	},
+	{
 		// @types/node is present so the expo-sqlite test mock can use node:sqlite.
 		// That makes Node APIs typecheck inside src/ too, where they would pass
 		// CI and then crash on a phone. Shipped code may not import them.

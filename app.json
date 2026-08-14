@@ -23,7 +23,8 @@
 				"monochromeImage": "./assets/images/android-icon-monochrome.png"
 			},
 			"predictiveBackGestureEnabled": false,
-			"package": "com.fieldagentlog.app"
+			"package": "com.fieldagentlog.app",
+			"blockedPermissions": ["android.permission.RECORD_AUDIO", "android.permission.READ_MEDIA_VIDEO"]
 		},
 		"web": {
 			"output": "static",
@@ -41,7 +42,14 @@
 			],
 			"expo-font",
 			"expo-sqlite",
-			"expo-secure-store"
+			"expo-secure-store",
+			[
+				"expo-image-picker",
+				{
+					"photosPermission": "FieldAgentLog uses your photos so you can attach an existing picture of a fault to a check.",
+					"cameraPermission": "FieldAgentLog uses the camera so you can photograph a fault as evidence on the fire logbook."
+				}
+			]
 		],
 		"experiments": {
 			"typedRoutes": true,

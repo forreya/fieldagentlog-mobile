@@ -134,6 +134,22 @@ describe("resuming a part-uploaded visit", () => {
 	});
 });
 
+describe("a photo whose queue row has vanished", () => {
+	test("does not strand the visit forever", async () => {
+		// The reference can never resolve, so readyToSubmit would stay false and
+		// the inspection could never leave the phone. Losing one photo beats
+		// losing the whole visit.
+		const rec = record({ results: withPhoto("c1", "ghost"), submit_requested_at: 1 });
+		await saveVisit(rec);
+
+		await pushVisit(rec);
+
+		expect(api.uploadPhoto).not.toHaveBeenCalled();
+		expect(api.submitVisit).toHaveBeenCalledTimes(1);
+		expect((await loadVisit("tok1"))?.results.c1.photo_local_id).toBeNull();
+	});
+});
+
 describe("orphaned photos", () => {
 	test("a photo whose check was flipped back to Pass is dropped, not uploaded", async () => {
 		// Uploading it would spend a field worker's data on an image no one will
