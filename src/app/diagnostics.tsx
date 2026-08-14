@@ -18,6 +18,7 @@ import { getDatabase, LATEST_VERSION } from "@/db/database";
 import { storeUsageBytes } from "@/db/photoStore";
 import { allReports } from "@/db/reports";
 import { backendSummary } from "@/lib/config";
+import { BUILD_COMMIT, versionLabel } from "@/lib/version";
 import { syncEngine, type SyncState } from "@/sync/engine";
 import { pillState } from "@/sync/useSyncStatus";
 import { colors, fonts, space } from "@/theme/tokens";
@@ -72,7 +73,8 @@ export default function Diagnostics() {
 			footer={<Button label="Back" variant="ghostDark" onPress={() => router.back()} />}
 		>
 			<Card>
-				<Text style={styles.heading}>Backend</Text>
+				<Text style={styles.heading}>This build</Text>
+				<Row label="Version" value={`${versionLabel()}${BUILD_COMMIT ? "" : " (unstamped)"}`} />
 				<Row label="Supabase" value={snapshot?.backend ?? "..."} />
 				<Row label="Database version" value={`${snapshot?.dbVersion ?? "..."} (expected ${LATEST_VERSION})`} />
 				<Row label="Journal mode" value={snapshot?.journalMode ?? "..."} />

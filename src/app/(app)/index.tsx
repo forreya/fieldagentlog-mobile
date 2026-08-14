@@ -35,6 +35,11 @@ export default function SignedInHome() {
 				<Text style={styles.p}>{WHAT_IS_COMING[state.role]} It arrives in the next build.</Text>
 			</Card>
 			<Card>
+				<Text style={styles.h}>About this app</Text>
+				<Text style={styles.p}>The version, and what it is connected to. Worth quoting if you report a problem.</Text>
+				<Button label="About" variant="ghost" onPress={() => router.push("/about")} />
+			</Card>
+			<Card>
 				<Text style={styles.h}>Open a visit</Text>
 				<Text style={styles.p}>Inspection links work whether or not you are signed in.</Text>
 				<Button label="Enter a visit link" variant="ghost" onPress={() => router.push("/enter-code")} />

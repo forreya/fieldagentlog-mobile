@@ -24,6 +24,9 @@ export default function Index() {
 				<Text style={styles.p}>Staff, field agents and cleaners sign in to see the blocks and checks due to them.</Text>
 				<Button label="Sign in" variant="ghost" onPress={() => router.push("/login")} />
 			</Card>
+			<Link href="/about" style={styles.link}>
+				About this app
+			</Link>
 			<Link href="/gallery" style={styles.link}>
 				Component gallery
 			</Link>

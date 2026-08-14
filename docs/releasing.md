@@ -129,6 +129,17 @@ Production > create release > roll out.
 6. Release notes: see `../../.claude/skills/release-note-writing` for the house style (one note
    serves both stores; keep under Play's 500-char limit).
 
+## What identifies a build
+
+`app.config.js` stamps the commit and the build time into `extra` at build time
+(`EAS_BUILD_GIT_COMMIT_HASH` on EAS, `git rev-parse` locally). The **About**
+screen reads them back, and it is reachable signed out - the person on the phone
+is often an inspector with no account.
+
+Ask for the line at the top of About: `v0.1.0 (41)`, or `v0.1.0 · 3bb6217` when
+no build number has been assigned yet. That is enough to identify the exact
+build; nothing needs bumping by hand.
+
 ## Gotchas
 
 - **Play's first-upload rule** (stage 4) - the single most common blocker.
