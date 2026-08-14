@@ -37,6 +37,14 @@ BalanceBuddy Edge Functions (`../../balancebuddy-web/supabase/functions/`) and a
   count, not just the test count - a suite that fails to load still prints `Tests: N passed`.
   Twice a narrow grep hid a real failure.
 
+## Commits
+
+Match the house style used across the Gena repos: **past tense, sentence case, subject line
+only.** "Added the sync engine, visit queue and triggers", "Fixed env vars never reaching release
+builds", "Made buttons size to their content". No body, no trailing full stop, no
+`Co-Authored-By` trailers, no phase ids - phase progress is ticked in the plan doc instead. One
+commit per plan phase; incidental fixes found along the way get their own.
+
 ## Code rules (lint-enforced - don't fight them, split)
 
 - Size budgets: screens ≤300 lines, modules ≤250, functions ≤60. Tabs, printWidth 150.
