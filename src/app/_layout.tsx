@@ -4,6 +4,8 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 
+import { bootstrap } from "@/bootstrap";
+
 SplashScreen.preventAutoHideAsync();
 
 /**
@@ -19,6 +21,13 @@ export default function RootLayout() {
 		Archivo_800ExtraBold,
 		IBMPlexMono_500Medium,
 	});
+
+	// Storage, the sync queues and their triggers. Deliberately not awaited: the
+	// first screen must not wait on a database open, and anything queued is
+	// already on disk and will go on the next pass either way.
+	useEffect(() => {
+		void bootstrap();
+	}, []);
 
 	useEffect(() => {
 		// A font failure must not leave the user staring at a splash screen -

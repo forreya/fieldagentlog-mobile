@@ -17,6 +17,9 @@ export default function Index() {
 			<Link href="/gallery" style={styles.link}>
 				Component gallery
 			</Link>
+			<Link href="/diagnostics" style={styles.link}>
+				Diagnostics
+			</Link>
 		</Screen>
 	);
 }

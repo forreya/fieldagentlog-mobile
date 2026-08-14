@@ -1,22 +1,49 @@
 # Architecture
 
-Module map and the rules that keep it honest. Written as the pieces land; the
-full picture arrives with the sync engine (phase B7).
+Module map and the rules that keep it honest. Complete as of Milestone B; the
+UI layers arrive in C-F.
 
 ## Layers
 
-| Directory        | Owns                                          | Never does                  |
-| ---------------- | --------------------------------------------- | --------------------------- |
-| `src/app`        | Routes: render, dispatch, navigate            | Fetch, retry, touch storage |
-| `src/components` | Presentational primitives                     | Know about the network      |
-| `src/theme`      | Design tokens ported from the web app         | -                           |
-| `src/lib`        | Config and small platform-free helpers        | -                           |
-| `src/shared`     | **Mirrored** logic (see below)                | Diverge from the web app    |
-| `src/api`        | Network calls, error taxonomy (phase B1-B2)   | Retry, queue                |
-| `src/db`         | SQLite + photo files (phase B3-B4)            | Talk to the network         |
-| `src/sync`       | Queues, ordering, retries, backoff (phase B5) | Render                      |
+| Directory          | Owns                                                               | Never does                  |
+| ------------------ | ------------------------------------------------------------------ | --------------------------- |
+| `src/app`          | Routes: render, dispatch, navigate                                 | Fetch, retry, touch storage |
+| `src/components`   | Presentational primitives                                          | Know about the network      |
+| `src/theme`        | Design tokens ported from the web app                              | -                           |
+| `src/lib`          | Config and small platform-free helpers                             | -                           |
+| `src/shared`       | **Mirrored** logic (see below)                                     | Diverge from the web app    |
+| `src/api`          | Network calls, error taxonomy                                      | Retry, queue                |
+| `src/db`           | SQLite + photo files                                               | Talk to the network         |
+| `src/sync`         | Queues, ordering, retries, backoff                                 | Render                      |
+| `src/auth`         | Session storage, role resolution                                   | Decide permissions          |
+| `src/bootstrap.ts` | Composition root: opens storage, registers queues, starts triggers | Contain logic               |
 
-A screen that fetches is wrong even if it works.
+A screen that fetches is wrong even if it works. `src/bootstrap.ts` sits
+deliberately outside `src/app`, because Expo Router treats every file there as a
+route and a non-route module logs a missing-default-export warning.
+
+## How a capture reaches the server
+
+```
+screen -> src/db (persist FIRST, always)
+       -> requestSync()
+             |
+       src/sync/engine  single pass, one at a time
+             |  asks each registered source what is pending
+       src/sync/visitSync  photos, in order, then submit
+             |
+       src/api  one POST, one classified error
+```
+
+Triggers that start a pass: regained connectivity, app foregrounded, an explicit
+nudge after a capture, and a jittered backoff retry after a retryable failure.
+Nothing else. A screen never calls the network directly.
+
+**Connectivity means `isConnected`, not `isInternetReachable`.** Measured on a
+device: NetInfo re-probes reachability only every 60 s once it believes there is
+no internet, so the app sat offline a full minute after signal returned. Our own
+request is the better probe; a wasted attempt costs one backoff step, while
+being slow costs a field worker standing in a car park.
 
 ## The shared mirror
 

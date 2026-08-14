@@ -4,7 +4,7 @@ import { AppState } from "react-native";
 import { SyncEngine } from "./engine";
 import { startSyncTriggers } from "./triggers";
 
-jest.mock("@react-native-community/netinfo", () => ({ addEventListener: jest.fn(() => jest.fn()) }));
+jest.mock("@react-native-community/netinfo", () => ({ addEventListener: jest.fn(() => jest.fn()), configure: jest.fn() }));
 
 type NetState = { isConnected: boolean | null; isInternetReachable: boolean | null };
 
@@ -23,23 +23,25 @@ beforeEach(() => {
 afterEach(() => engine.reset());
 
 describe("connectivity", () => {
-	test("losing the route out marks the engine offline", () => {
+	test("losing the network marks the engine offline", () => {
 		startSyncTriggers(engine);
-		emitNet({ isConnected: true, isInternetReachable: false });
+		emitNet({ isConnected: false, isInternetReachable: false });
 		expect(engine.isOnline()).toBe(false);
 	});
 
-	test("connected-but-unreachable counts as offline, not online", () => {
-		// The classic false positive: attached to site wifi with no route out,
-		// or sitting behind a captive portal.
+	test("connected-but-unreachable still counts as online, so we try immediately", () => {
+		// Measured on a device: NetInfo only re-probes reachability every 60s
+		// once it thinks there is no internet, so trusting it left the app
+		// offline a full minute after signal returned. Our own request is the
+		// better probe; a wasted attempt costs one jittered backoff step.
 		startSyncTriggers(engine);
 		emitNet({ isConnected: true, isInternetReachable: false });
-		expect(engine.isOnline()).toBe(false);
+		expect(engine.isOnline()).toBe(true);
 	});
 
-	test("an undetermined reachability is treated as online rather than blocking", () => {
+	test("an undetermined state is treated as online rather than blocking", () => {
 		startSyncTriggers(engine);
-		emitNet({ isConnected: true, isInternetReachable: null });
+		emitNet({ isConnected: null, isInternetReachable: null });
 		expect(engine.isOnline()).toBe(true);
 	});
 
