@@ -11,7 +11,7 @@ import { addPendingPhoto, getPhoto, pendingPhotosForToken } from "@/db/photos";
 import type { VisitRecord } from "@/db/types";
 import { loadVisit, saveVisit } from "@/db/visits";
 
-import { createVisitSource, pushVisit, readyToSubmit } from "./visitSync";
+import { createVisitSource, pushVisit, readyToSubmit, visitHasWork } from "./visitSync";
 
 jest.mock("expo-sqlite");
 jest.mock("@/api/visit");
@@ -188,6 +188,33 @@ describe("idempotent submit", () => {
 		await saveVisit(rec);
 		await pushVisit(rec);
 		expect(api.submitVisit).not.toHaveBeenCalled();
+	});
+
+	test("a dead link is recorded on the record, so the queue stops offering it", async () => {
+		// Found by the basement test: the engine schedules no retry for a
+		// permanent failure, but app start, reconnect and foreground all offer
+		// the task again - a spent token was re-POSTed ten times in one minute.
+		api.submitVisit.mockRejectedValue(new ApiError("dead_end", "This link can't be used.", { status: 410 }));
+		const rec = record({ submit_requested_at: 1 });
+		await saveVisit(rec);
+
+		await expect(pushVisit(rec)).rejects.toThrow();
+
+		const saved = (await loadVisit("tok1")) as VisitRecord;
+		expect(saved.submit_error?.message).toBe("This link can't be used.");
+		expect(await visitHasWork(saved)).toBe(false);
+	});
+
+	test("a retryable failure leaves the visit in the queue", async () => {
+		api.submitVisit.mockRejectedValue(new ApiError("network", "no signal"));
+		const rec = record({ submit_requested_at: 1 });
+		await saveVisit(rec);
+
+		await expect(pushVisit(rec)).rejects.toThrow();
+
+		const saved = (await loadVisit("tok1")) as VisitRecord;
+		expect(saved.submit_error).toBeUndefined();
+		expect(await visitHasWork(saved)).toBe(true);
 	});
 
 	test("a dead link surfaces as permanent, so the engine stops retrying it", async () => {

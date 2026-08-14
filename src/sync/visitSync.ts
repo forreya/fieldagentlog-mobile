@@ -15,6 +15,7 @@
 // so a submit retried after a lost response returns the stored result instead
 // of recording a second visit.
 
+import { ApiError } from "@/api/errors";
 import { submitVisit, uploadPhoto } from "@/api/visit";
 import { deletePhoto, pendingPhotosForToken, setPhotoRef } from "@/db/photos";
 import { deleteStoredPhoto } from "@/db/photoStore";
@@ -98,10 +99,22 @@ export async function pushVisit(record: VisitRecord): Promise<void> {
 		await saveVisit(current);
 	}
 
-	if (!current.submit_requested_at || current.submitted) return;
+	if (!current.submit_requested_at || current.submitted || current.submit_error) return;
 	if (!readyToSubmit(current)) return;
 
-	const response = await submitVisit(current.token, buildSubmitBody(current));
+	let response;
+	try {
+		response = await submitVisit(current.token, buildSubmitBody(current));
+	} catch (err) {
+		// A permanent failure is recorded on the record, not just thrown. The
+		// engine does not schedule a retry for one, but every other trigger -
+		// app start, reconnect, foreground - would offer the task again, and a
+		// spent token would be re-POSTed for the life of the install.
+		if (err instanceof ApiError && !err.retryable) {
+			await saveVisit({ ...current, submit_error: { message: err.message, at: Date.now() } });
+		}
+		throw err;
+	}
 	await saveVisit({
 		...current,
 		submitted: {
@@ -121,6 +134,9 @@ export async function pushVisit(record: VisitRecord): Promise<void> {
 /** Whether this visit has anything left to push. */
 export async function visitHasWork(record: VisitRecord): Promise<boolean> {
 	if (record.submitted) return false;
+	// Nothing here can succeed until someone acts: uploading its photos would
+	// only spend data on a visit that can never be submitted.
+	if (record.submit_error) return false;
 	if (record.submit_requested_at) return true;
 	return (await pendingPhotosForToken(record.token)).length > 0;
 }

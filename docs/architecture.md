@@ -5,18 +5,18 @@ UI layers arrive in C-F.
 
 ## Layers
 
-| Directory          | Owns                                                               | Never does                  |
-| ------------------ | ------------------------------------------------------------------ | --------------------------- |
-| `src/app`          | Routes: render, dispatch, navigate                                 | Fetch, retry, touch storage |
-| `src/components`   | Presentational primitives                                          | Know about the network      |
-| `src/theme`        | Design tokens ported from the web app                              | -                           |
-| `src/lib`          | Config and small platform-free helpers                             | -                           |
-| `src/shared`       | **Mirrored** logic (see below)                                     | Diverge from the web app    |
-| `src/api`          | Network calls, error taxonomy                                      | Retry, queue                |
-| `src/db`           | SQLite + photo files                                               | Talk to the network         |
-| `src/sync`         | Queues, ordering, retries, backoff                                 | Render                      |
-| `src/auth`         | Session storage, role resolution                                   | Decide permissions          |
-| `src/bootstrap.ts` | Composition root: opens storage, registers queues, starts triggers | Contain logic               |
+| Directory          | Owns                                                               | Never does                      |
+| ------------------ | ------------------------------------------------------------------ | ------------------------------- |
+| `src/app`          | Routes: render, dispatch, navigate                                 | Fetch, retry, touch storage     |
+| `src/components`   | Presentational primitives                                          | Know about the network          |
+| `src/theme`        | Design tokens ported from the web app                              | -                               |
+| `src/lib`          | Config and small platform-free helpers                             | -                               |
+| `src/shared`       | **Mirrored** logic (see below)                                     | Diverge from the web app        |
+| `src/api`          | Network calls, error taxonomy                                      | Retry, queue                    |
+| `src/db`           | SQLite + photo files                                               | Talk to the network             |
+| `src/sync`         | Queues, ordering, retries, backoff                                 | Render                          |
+| `src/auth`         | Session storage, role resolution                                   | Decide permissions              |
+| `src/bootstrap.ts` | Composition root: opens storage, registers queues, starts triggers | Contain logic, hold queue state |
 
 A screen that fetches is wrong even if it works. `src/bootstrap.ts` sits
 deliberately outside `src/app`, because Expo Router treats every file there as a
@@ -29,11 +29,11 @@ therefore live in `src/screens` with a one-line re-export in `src/app`.
 A dispatched link is always `https://fieldagentlog.com/v/<token>`
 (`visitLinkUrl` in balancebuddy-web). Three routes in:
 
-| Arrives as | Reaches `/v/[token]` because |
-| --- | --- |
-| `https://fieldagentlog.com/v/<token>` | Expo Router strips the origin and routes on the path |
-| `fieldagentlog://v/<token>` | a custom scheme's *host* becomes the first path segment |
-| typed or pasted into `enter-code` | `src/lib/token.ts` extracts the token from any of the shapes |
+| Arrives as                            | Reaches `/v/[token]` because                                 |
+| ------------------------------------- | ------------------------------------------------------------ |
+| `https://fieldagentlog.com/v/<token>` | Expo Router strips the origin and routes on the path         |
+| `fieldagentlog://v/<token>`           | a custom scheme's _host_ becomes the first path segment      |
+| typed or pasted into `enter-code`     | `src/lib/token.ts` extracts the token from any of the shapes |
 
 No linking prefixes are configured: Expo Router routes any incoming URL by path
 alone. What the OS needs is the claim - `associatedDomains` (iOS) and an
@@ -55,9 +55,21 @@ screen -> src/db (persist FIRST, always)
        src/api  one POST, one classified error
 ```
 
-Triggers that start a pass: regained connectivity, app foregrounded, an explicit
-nudge after a capture, and a jittered backoff retry after a retryable failure.
-Nothing else. A screen never calls the network directly.
+Triggers that start a pass: app start, regained connectivity, app foregrounded,
+an explicit nudge after a capture, and a jittered backoff retry after a
+retryable failure. Nothing else. A screen never calls the network directly.
+
+**What is outstanding is read from the database, never from memory.** The visit
+source lists `allVisits()` and the startup photo sweep lists `allPhotos()`. Both
+used to read a set of tokens that only the wizard filled in, so after a
+force-stop the app believed it held nothing: a visit submitted in a basement
+never sent itself, and the sweep deleted the queued photos of any visit that had
+not been reopened. Anything a queue must survive a force-stop has to be a query.
+
+A failure that retrying cannot fix is recorded on the record (`submit_error`)
+rather than only thrown. The engine schedules no retry for one, but app start,
+reconnect and foreground would each offer the task again - a spent token was
+re-POSTed ten times in a minute before this was written down.
 
 **Connectivity means `isConnected`, not `isInternetReachable`.** Measured on a
 device: NetInfo re-probes reachability only every 60 s once it believes there is

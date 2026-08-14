@@ -1,14 +1,13 @@
 // Loading a visit: read what the device holds, ask the server, decide.
 //
 // The hook does the I/O and nothing else; the decision lives in load.ts, which
-// is pure and where the tests are. It also registers the token with the sync
-// engine, so photos and a queued submit for this visit get picked up by the
-// next pass even if the inspector closes the app.
+// is pure and where the tests are. Nothing needs registering with the sync
+// engine: the moment a record is saved it is in the database, and the database
+// is what the engine reads.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { fetchPacket } from "@/api/visit";
-import { trackVisit } from "@/bootstrap";
 import { loadVisit, saveVisit } from "@/db/visits";
 
 import { decideLoad, lockedRecord, type FetchOutcome, type VisitLoad } from "./load";
@@ -27,8 +26,6 @@ export function useVisitLoad(token: string): VisitLoadView {
 	// setting it again on mount would be a wasted cascading render. A retry is
 	// the only case that needs it, and does it itself.
 	const load = useCallback(async () => {
-		trackVisit(token);
-
 		const cached = await loadVisit(token);
 		// A locked visit needs no request, which is what makes reopening a
 		// finished visit work with no signal at all.

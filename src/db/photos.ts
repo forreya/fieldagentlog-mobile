@@ -70,6 +70,18 @@ export async function pendingPhotosForToken(token: string): Promise<PendingPhoto
 	}
 }
 
+/** Every queued photo on the device, whichever visit it belongs to. The
+ *  startup sweep needs this: anything it cannot see, it deletes. */
+export async function allPhotos(): Promise<PendingPhoto[]> {
+	try {
+		const db = await getDatabase();
+		const rows = await db.getAllAsync<PhotoRow>("SELECT * FROM photos");
+		return rows.map(toPhoto);
+	} catch {
+		return [];
+	}
+}
+
 /** Every photo row for a visit, uploaded or not - used when clearing up. */
 export async function allPhotosForToken(token: string): Promise<PendingPhoto[]> {
 	const db = await getDatabase();

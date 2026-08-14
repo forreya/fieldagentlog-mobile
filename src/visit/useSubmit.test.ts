@@ -156,6 +156,30 @@ describe("a link that has died mid-visit", () => {
 	});
 });
 
+describe("a permanent failure recorded on the record", () => {
+	test("is shown on reopening, rather than a button that will fail again", async () => {
+		const dead = record({ submit_error: { message: "This link can't be used.", at: 5 } });
+		await saveVisit(dead);
+
+		const { result } = await renderHook(() => useSubmit(dead, jest.fn()));
+
+		expect(result.current.phase).toEqual({ kind: "blocked", message: "This link can't be used." });
+	});
+
+	test("is cleared by Try again, so the queue picks the visit up once more", async () => {
+		const dead = record({ submit_error: { message: "gone", at: 5 } });
+		await saveVisit(dead);
+		const { result } = await renderHook(() => useSubmit(dead, jest.fn()));
+
+		await act(async () => {
+			await result.current.submit();
+		});
+
+		expect(api.submitVisit).toHaveBeenCalledTimes(1);
+		expect(result.current.submitted?.visit_id).toBe("v1");
+	});
+});
+
 describe("an already-submitted record", () => {
 	test("is reported as done without asking the server again", async () => {
 		const done = record({ submitted: { visit_id: "v9", logbook_pdf_url: "u", completed_at: "2026-08-14T00:00:00Z" } });

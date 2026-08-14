@@ -39,24 +39,38 @@ export interface Submission {
 
 export function useSubmit(record: VisitRecord, dispatch: (action: WizardAction) => void): Submission {
 	const { token } = record;
-	const [phase, setPhase] = useState<SubmitPhase>({ kind: "idle" });
+	// A submit that died permanently is on the record, so reopening the visit
+	// after a restart explains itself instead of offering a button that will
+	// fail again silently.
+	const initial: SubmitPhase = record.submit_error ? { kind: "blocked", message: record.submit_error.message } : { kind: "idle" };
+	const [phase, setPhase] = useState<SubmitPhase>(initial);
 	const [submitted, setSubmitted] = useState(record.submitted);
 
 	// Mirrors `phase` for the async paths, which need the value as it is now and
 	// not as it was when their closure was made.
-	const phaseRef = useRef<SubmitPhase>({ kind: "idle" });
+	const phaseRef = useRef<SubmitPhase>(initial);
 	const advance = useCallback((next: SubmitPhase) => {
 		phaseRef.current = next;
 		setPhase(next);
 	}, []);
 
-	/** Read the record back; the engine writes the result there, not to us. */
-	const landed = useCallback(async (): Promise<boolean> => {
+	/**
+	 * Read the record back and adopt whatever the engine wrote there - it
+	 * reports through the record, not to us. Returns true once the visit has
+	 * reached a state this hook no longer has to wait on.
+	 */
+	const settle = useCallback(async (): Promise<boolean> => {
 		const saved = await loadVisit(token);
-		if (!saved?.submitted) return false;
-		setSubmitted(saved.submitted);
-		advance({ kind: "idle" });
-		return true;
+		if (saved?.submitted) {
+			setSubmitted(saved.submitted);
+			advance({ kind: "idle" });
+			return true;
+		}
+		if (saved?.submit_error) {
+			advance({ kind: "blocked", message: saved.submit_error.message || BLOCKED_FALLBACK });
+			return true;
+		}
+		return false;
 	}, [token, advance]);
 
 	useEffect(() => {
@@ -66,9 +80,9 @@ export function useSubmit(record: VisitRecord, dispatch: (action: WizardAction) 
 		return syncEngine.subscribe((state) => {
 			if (state.status !== "idle") return;
 			if (phaseRef.current.kind !== "queued") return;
-			void landed();
+			void settle();
 		});
-	}, [landed]);
+	}, [settle]);
 
 	const submit = useCallback(async () => {
 		if (phaseRef.current.kind === "submitting") return;
@@ -79,24 +93,25 @@ export function useSubmit(record: VisitRecord, dispatch: (action: WizardAction) 
 		// left to the wizard's save effect because the engine reads the record
 		// from the database - the request has to be on disk before the pass runs.
 		dispatch({ type: "REQUEST_SUBMIT", at });
-		await saveVisit({ ...record, submit_requested_at: at, updated_at: at });
+		// Any recorded failure is cleared: pressing Try again is the act that
+		// puts the visit back in the queue, and leaving it set would make the
+		// source skip the task it was just asked to run.
+		await saveVisit({ ...record, submit_requested_at: at, updated_at: at, submit_error: undefined });
 
 		const pass = await syncEngine.sync("submit requested");
-		if (await landed()) return;
+		if (await settle()) return;
 
-		// A permanent failure means the token is spent, expired or revoked: no
-		// amount of waiting will change it, so saying "waiting for signal" would
-		// be a lie. Read by task id, never from the engine's single lastError,
-		// which belongs to whichever queue failed last. Only the pass this call
-		// awaited is inspected; a later pass failing this way leaves the queued
-		// copy, which D's sync status covers.
+		// The pass may have reported a permanent failure without the push having
+		// got as far as recording one - a photo upload that 403s, say. Read by
+		// task id, never from the engine's single lastError, which belongs to
+		// whichever queue failed last.
 		const permanent = pass?.permanentErrors[visitTaskId(token)];
 		if (permanent !== undefined) {
 			advance({ kind: "blocked", message: permanent || BLOCKED_FALLBACK });
 			return;
 		}
 		advance({ kind: "queued", online: syncEngine.isOnline() });
-	}, [record, token, dispatch, advance, landed]);
+	}, [record, token, dispatch, advance, settle]);
 
 	return { phase, submitted, submit };
 }

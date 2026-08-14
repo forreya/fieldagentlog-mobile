@@ -46,6 +46,10 @@ export interface VisitRecord {
 	/** Set when the inspector hits submit. Persisted rather than held in memory
 	 *  so a submit queued underground still goes after the app is killed. */
 	submit_requested_at?: number;
+	/** Set when a submit failed in a way retrying cannot fix (the link expired
+	 *  or was revoked mid-visit). Persisted so the app can say so after a
+	 *  restart, and so the queue stops offering a task that can only fail. */
+	submit_error?: { message: string; at: number };
 	/** Present once submitted - the visit is then locked. */
 	submitted: { visit_id: string; logbook_pdf_url: string; completed_at: string } | null;
 	/** True when a cleaner launched this visit from their own app. */
