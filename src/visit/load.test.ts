@@ -45,7 +45,7 @@ const failed = (error: unknown) => ({ ok: false, error }) as const;
 describe("a submitted visit is answered from cache, without asking", () => {
 	test("locked in cache short-circuits everything", () => {
 		const done = cachedRecord({ submitted: { visit_id: "v1", logbook_pdf_url: "u", completed_at: "2026-08-13T00:00:00Z" } });
-		expect(lockedRecord(done)).toBe(done);
+		expect(lockedRecord(done)).toEqual(done);
 		// Even against a dead link: the visit is finished, and saying so beats
 		// an error. This is what lets a finished visit reopen with no signal.
 		expect(decideLoad("tok", done, failed(new ApiError("dead_end", "gone"))).status).toBe("submitted");

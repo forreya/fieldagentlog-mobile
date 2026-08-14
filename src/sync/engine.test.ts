@@ -84,6 +84,21 @@ describe("retryability", () => {
 		expect(result).toMatchObject({ permanent: 1, retryable: 0 });
 	});
 
+	test("permanent failures are reported per task, not as one message", async () => {
+		// A screen watching its own work must not be able to show another
+		// queue's failure - which is exactly what a single lastError allows.
+		engine.register(
+			source("s", [
+				fails("visit:tok", new ApiError("dead_end", "This link can't be used.", { status: 410 })),
+				fails("report:r1", new ApiError("forbidden", "Not your site.", { status: 403 })),
+			]),
+		);
+
+		const result = await engine.sync("test");
+
+		expect(result?.permanentErrors).toEqual({ "visit:tok": "This link can't be used.", "report:r1": "Not your site." });
+	});
+
 	test.each([
 		["auth", false],
 		["forbidden", false],

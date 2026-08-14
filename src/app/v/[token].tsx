@@ -7,14 +7,13 @@
 // reachable would break the product's main flow.
 
 import { useLocalSearchParams } from "expo-router";
-import { StyleSheet, Text } from "react-native";
 
-import { Card, Screen } from "@/components/Screen";
+import type { VisitPacket } from "@/api/contract";
 import { LoadingScreen } from "@/components/StatusScreen";
 import { ConnectionErrorScreen } from "@/screens/visit/ConnectionErrorScreen";
 import { DeadEndScreen } from "@/screens/visit/DeadEndScreen";
+import { SuccessScreen } from "@/screens/visit/SuccessScreen";
 import { VisitWizard } from "@/screens/visit/VisitWizard";
-import { colors, fonts } from "@/theme/tokens";
 import { useVisitLoad } from "@/visit/useVisitLoad";
 
 export default function VisitRoute() {
@@ -30,22 +29,13 @@ export default function VisitRoute() {
 			return <ConnectionErrorScreen mode="offline" onRetry={retry} />;
 		case "error":
 			return <ConnectionErrorScreen mode="error" onRetry={retry} />;
-		case "submitted":
-			// The locked success screen arrives with submit, in C5.
-			return (
-				<Screen title="Visit complete" sub="Already submitted">
-					<Card>
-						<Text style={styles.h}>This visit is complete</Text>
-						<Text style={styles.p}>It was submitted from this device and can no longer be edited.</Text>
-					</Card>
-				</Screen>
-			);
+		case "submitted": {
+			// Reopening a finished link. Shown from cache without a request: the
+			// visit is locked, so asking the server could only fail underground.
+			const packet = state.record.packet as VisitPacket;
+			return <SuccessScreen blockName={packet.visit?.block_name} submitted={state.record.submitted} />;
+		}
 		case "ready":
 			return <VisitWizard record={state.record} />;
 	}
 }
-
-const styles = StyleSheet.create({
-	h: { fontFamily: fonts.displayHeavy, fontSize: 20, color: colors.plateInk },
-	p: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: colors.plateMuted },
-});

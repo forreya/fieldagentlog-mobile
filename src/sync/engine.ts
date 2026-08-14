@@ -50,6 +50,10 @@ export interface PassResult {
 	retryable: number;
 	/** Failures that will never succeed as-is; the source must resolve them. */
 	permanent: number;
+	/** Task id → message, for the permanent ones. Keyed per task rather than
+	 *  reported as one `lastError`, so a screen watching its own work cannot
+	 *  end up showing another queue's failure. */
+	permanentErrors: Record<string, string>;
 }
 
 const BASE_DELAY_MS = 2_000;
@@ -134,7 +138,7 @@ export class SyncEngine {
 		this.running = true;
 		this.emit({ status: "syncing" });
 
-		let result: PassResult = { attempted: 0, succeeded: 0, retryable: 0, permanent: 0 };
+		let result: PassResult = { attempted: 0, succeeded: 0, retryable: 0, permanent: 0, permanentErrors: {} };
 		try {
 			result = await this.runPass();
 		} finally {
@@ -155,7 +159,7 @@ export class SyncEngine {
 	}
 
 	private async runPass(): Promise<PassResult> {
-		const result: PassResult = { attempted: 0, succeeded: 0, retryable: 0, permanent: 0 };
+		const result: PassResult = { attempted: 0, succeeded: 0, retryable: 0, permanent: 0, permanentErrors: {} };
 		let lastError: string | null = null;
 
 		for (const source of this.sources) {
@@ -175,9 +179,14 @@ export class SyncEngine {
 					result.succeeded += 1;
 				} catch (err) {
 					const retryable = !(err instanceof ApiError) || err.retryable;
-					if (retryable) result.retryable += 1;
-					else result.permanent += 1;
-					lastError = err instanceof Error ? err.message : "Something went wrong.";
+					const message = err instanceof Error ? err.message : "Something went wrong.";
+					if (retryable) {
+						result.retryable += 1;
+					} else {
+						result.permanent += 1;
+						result.permanentErrors[task.id] = message;
+					}
+					lastError = message;
 				}
 			}
 		}

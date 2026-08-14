@@ -20,12 +20,15 @@ import type { VisitRecord } from "@/db/types";
 
 import { buildRecord } from "./record";
 
+/** A record known to be submitted, so the result is no longer nullable. */
+export type SubmittedVisit = VisitRecord & { submitted: NonNullable<VisitRecord["submitted"]> };
+
 export type VisitLoad =
 	| { status: "loading" }
 	/** The wizard can run. `fromCache` means the packet may be stale. */
 	| { status: "ready"; record: VisitRecord; fromCache: boolean }
 	/** Already submitted: show the success screen, locked. */
-	| { status: "submitted"; record: VisitRecord }
+	| { status: "submitted"; record: SubmittedVisit }
 	/** The link itself is finished. Terminal - no retry offered. */
 	| { status: "dead_end"; reason: DeadEndReason }
 	/** No signal and nothing saved here yet. Retryable. */
@@ -38,8 +41,10 @@ export type FetchOutcome = { ok: true; packet: VisitPacket } | { ok: false; erro
 /** The cached copy if it is already submitted, else null.
  *  Returns the record rather than a boolean: a type predicate here would claim
  *  the false branch means "no cache", when it usually means "cache, unfinished". */
-export function lockedRecord(cached?: VisitRecord): VisitRecord | null {
-	return cached?.submitted ? cached : null;
+export function lockedRecord(cached?: VisitRecord): SubmittedVisit | null {
+	// Rebuilt rather than cast: this is the one place that proves the field is
+	// there, so proving it to the compiler too costs one shallow copy per load.
+	return cached?.submitted ? { ...cached, submitted: cached.submitted } : null;
 }
 
 /** Decide what to show, given whatever this device holds and how the fetch went. */

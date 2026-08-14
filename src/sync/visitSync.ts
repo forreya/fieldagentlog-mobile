@@ -125,6 +125,11 @@ export async function visitHasWork(record: VisitRecord): Promise<boolean> {
 	return (await pendingPhotosForToken(record.token)).length > 0;
 }
 
+/** This visit's task id, so a screen can pick its own result out of a pass. */
+export function visitTaskId(token: string): string {
+	return `visit:${token}`;
+}
+
 /** The engine source. `visits` supplies the records currently on the device. */
 export function createVisitSource(visits: () => Promise<VisitRecord[]>): SyncSource {
 	return {
@@ -133,7 +138,7 @@ export function createVisitSource(visits: () => Promise<VisitRecord[]>): SyncSou
 			const tasks: SyncTask[] = [];
 			for (const record of await visits()) {
 				if (await visitHasWork(record)) {
-					tasks.push({ id: `visit:${record.token}`, run: () => pushVisit(record) });
+					tasks.push({ id: visitTaskId(record.token), run: () => pushVisit(record) });
 				}
 			}
 			return tasks;
