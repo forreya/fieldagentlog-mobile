@@ -20,7 +20,27 @@ UI layers arrive in C-F.
 
 A screen that fetches is wrong even if it works. `src/bootstrap.ts` sits
 deliberately outside `src/app`, because Expo Router treats every file there as a
-route and a non-route module logs a missing-default-export warning.
+route: a non-route module logs a missing-default-export warning, and a **test
+file is bundled into the app as a navigable screen**. Screens with tests
+therefore live in `src/screens` with a one-line re-export in `src/app`.
+
+## How a link opens a visit
+
+A dispatched link is always `https://fieldagentlog.com/v/<token>`
+(`visitLinkUrl` in balancebuddy-web). Three routes in:
+
+| Arrives as | Reaches `/v/[token]` because |
+| --- | --- |
+| `https://fieldagentlog.com/v/<token>` | Expo Router strips the origin and routes on the path |
+| `fieldagentlog://v/<token>` | a custom scheme's *host* becomes the first path segment |
+| typed or pasted into `enter-code` | `src/lib/token.ts` extracts the token from any of the shapes |
+
+No linking prefixes are configured: Expo Router routes any incoming URL by path
+alone. What the OS needs is the claim - `associatedDomains` (iOS) and an
+`autoVerify` intent filter for `/v/` (Android), both in `app.json` - plus the
+association files served from the `fieldagent` repo's `public/.well-known/`.
+Until those are filled in and deployed, a tapped link opens the browser and the
+enter-a-code screen is the way in.
 
 ## How a capture reaches the server
 

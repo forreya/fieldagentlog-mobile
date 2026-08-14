@@ -48,6 +48,8 @@ commit per plan phase; incidental fixes found along the way get their own.
 ## Code rules (lint-enforced - don't fight them, split)
 
 - Size budgets: screens ≤300 lines, modules ≤250, functions ≤60. Tabs, printWidth 150.
+- **`src/app` holds routes and nothing else** - every file there is bundled as a navigable screen,
+  test files included. Screen in `src/screens`, its test beside it, a re-export in `src/app`.
 - Layers: see the table in docs/architecture.md. The invariant: nothing above `src/api`,
   `src/db` or `src/sync` fetches, retries or touches storage directly. A screen that fetches is
   wrong even if it works.
