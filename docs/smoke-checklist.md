@@ -3,6 +3,12 @@
 Run the whole list on one iOS and one Android device at every consolidation phase and before
 every release. One line per scenario; each milestone appends its own. A failure blocks the phase.
 
+Boxes stay **unticked**: this is a template to re-run, not a record. Log each run below.
+
+| Run            | Platforms                  | Result                                                |
+| -------------- | -------------------------- | ----------------------------------------------------- |
+| B7, 2026-08-13 | Android emulator + iOS sim | A and B pass; offline/online transition verified live |
+
 ## A - Foundations
 
 - [ ] Cold start reaches the home screen; no font flash (Archivo from first paint).
@@ -13,7 +19,6 @@ every release. One line per scenario; each milestone appends its own. A failure 
 
 ## B - Core plumbing
 
-- [x] A-checks re-run on Android emulator 2026-08-13 (iOS sim + Android both match).
 - [ ] Diagnostics screen opens and reports the expected database version and journal mode.
 - [ ] Airplane mode on: connection reads `offline` within a few seconds.
 - [ ] Airplane mode off: connection returns to `online` within ~10s, without restarting the app.

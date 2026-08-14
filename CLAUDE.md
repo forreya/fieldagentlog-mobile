@@ -1,7 +1,7 @@
 # CLAUDE.md - FieldAgentLog mobile
 
 Invariants only: things whose ignorance causes a wrong edit. Budget: ≤120 lines, prune on every
-consolidation phase. How-to-run lives in README.md; module map in docs/architecture.md (from B7).
+consolidation phase. How-to-run lives in README.md; the module map in docs/architecture.md.
 
 ## The one that prevents the worst mistake
 
@@ -28,25 +28,24 @@ BalanceBuddy Edge Functions (`../../balancebuddy-web/supabase/functions/`) and a
 - N/A verdicts don't advance a check's cadence (server rule - don't imply otherwise in UI).
 - Never reload/update the app mid-visit; updates apply on cold start only.
 
-## After ANY dependency change, run `npm run lock:linux`
+## Two rules that have already been broken more than once
 
-`npm install` on macOS writes a lockfile that `npm ci` on Linux rejects (it
-omits optional subtrees for other platforms). CI and EAS both run `npm ci` on
-Linux, so a macOS-only lockfile breaks every cloud build. This has already
-happened twice. One command, in the same commit as the dependency change:
-
-```bash
-npm run lock:linux    # regenerates in Docker and verifies npm ci passes
-```
+- **After ANY dependency change: `npm run lock:linux`, same commit.** `npm install` on macOS
+  writes a lockfile `npm ci` on Linux rejects, and CI and EAS both run `npm ci` on Linux. Broken
+  twice.
+- **"Green" means a fresh clone passed on Linux**, not that it passed here. Read the _suite_
+  count, not just the test count - a suite that fails to load still prints `Tests: N passed`.
+  Twice a narrow grep hid a real failure.
 
 ## Code rules (lint-enforced - don't fight them, split)
 
 - Size budgets: screens ≤300 lines, modules ≤250, functions ≤60. Tabs, printWidth 150.
-- Layers: `src/app` routes render + dispatch · hooks orchestrate · `src/api` network ·
-  `src/db` storage · `src/sync` retries/ordering. A screen that fetches is wrong even if it works.
+- Layers: see the table in docs/architecture.md. The invariant: nothing above `src/api`,
+  `src/db` or `src/sync` fetches, retries or touches storage directly. A screen that fetches is
+  wrong even if it works.
 - Tests land in the same PR as the logic they test. No skipped tests on `main`.
-- Mirrored files (listed in `shared-mirror.json`, from A4) must match `../fieldagent` - CI fails
-  on drift; sync both repos in the same piece of work.
+- Mirrored files (listed in `shared-mirror.json`) must match `../fieldagent` - CI fails on drift;
+  sync both repos in the same piece of work.
 
 ## Docs
 

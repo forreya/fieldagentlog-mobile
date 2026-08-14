@@ -5,7 +5,8 @@ inspectors opening per-visit links, external field agents, cleaners logging geo-
 attendance, and staff. Native sibling of the FieldAgent PWA (`../fieldagent` →
 fieldagentlog.com); both stay in service.
 
-**Status: Milestone A (foundations).** The build plan lives at `../FIELDAGENT-MOBILE-PLAN.md` -
+**Status: Milestone B (core plumbing) complete** - API clients, offline queues, sync
+engine and auth exist and are wired; the UI flows arrive in C-F. The build plan lives at `../FIELDAGENT-MOBILE-PLAN.md` -
 a planning artifact, not something to load into tool context. Invariants for coding agents:
 [CLAUDE.md](CLAUDE.md).
 
