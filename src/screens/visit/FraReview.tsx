@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { FraAction, FraActionStatus } from "@/api/contract";
 import { Card } from "@/components/Screen";
+import { TextField } from "@/components/TextField";
 import type { VisitRecord } from "@/db/types";
 import { colors, fonts, radii, space, TAP } from "@/theme/tokens";
 import type { WizardAction } from "@/visit/wizard";
@@ -99,14 +100,12 @@ function FraCard({
 			</View>
 
 			{update ? (
-				<TextInput
+				<TextField
 					accessibilityLabel={`Note for: ${action.title}`}
 					placeholder="Add a note (optional)"
-					placeholderTextColor={colors.plateMuted}
 					value={update.note}
+					onChange={(note) => dispatch({ type: "SET_FRA", actionId: action.id, status: update.status, note })}
 					multiline
-					onChangeText={(note) => dispatch({ type: "SET_FRA", actionId: action.id, status: update.status, note })}
-					style={styles.note}
 				/>
 			) : null}
 		</Card>
@@ -135,15 +134,4 @@ const styles = StyleSheet.create({
 	optionOn: { backgroundColor: colors.signalDeep, borderColor: colors.signalDeep },
 	optionLabel: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.plateInk, textAlign: "center" },
 	optionLabelOn: { color: colors.plateRaised },
-	note: {
-		minHeight: 72,
-		borderWidth: 1,
-		borderColor: colors.plateEdgeStrong,
-		borderRadius: radii.sm,
-		padding: space.s3,
-		fontFamily: fonts.body,
-		fontSize: 15,
-		color: colors.plateInk,
-		textAlignVertical: "top",
-	},
 });

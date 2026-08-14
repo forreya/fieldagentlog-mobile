@@ -19,6 +19,7 @@ import { storeUsageBytes } from "@/db/photoStore";
 import { allReports } from "@/db/reports";
 import { backendSummary } from "@/lib/config";
 import { syncEngine, type SyncState } from "@/sync/engine";
+import { pillState } from "@/sync/useSyncStatus";
 import { colors, fonts, space } from "@/theme/tokens";
 
 interface Snapshot {
@@ -67,7 +68,7 @@ export default function Diagnostics() {
 		<Screen
 			title="Diagnostics"
 			sub="What the app thinks is true"
-			action={<StatusPill online={syncEngine.isOnline()} syncing={sync.status === "syncing"} pending={sync.pending} />}
+			action={<StatusPill {...pillState(sync)} />}
 			footer={<Button label="Back" variant="ghostDark" onPress={() => router.back()} />}
 		>
 			<Card>
@@ -88,7 +89,7 @@ export default function Diagnostics() {
 			<Card>
 				<Text style={styles.heading}>Sync</Text>
 				<Row label="Status" value={sync.status} />
-				<Row label="Connection" value={syncEngine.isOnline() ? "online" : "offline"} />
+				<Row label="Connection" value={sync.online ? "online" : "offline"} />
 				<Row label="Consecutive failures" value={String(sync.failures)} />
 				<Row label="Last error" value={sync.lastError ?? "none"} />
 				<View style={styles.actions}>

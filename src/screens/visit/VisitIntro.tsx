@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
 import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
-import type { VisitPacket } from "@/api/contract";
+import { StatusPill } from "@/components/StatusPill";
+import { TextField } from "@/components/TextField";
 import type { VisitRecord } from "@/db/types";
-import { colors, fonts, space, TAP } from "@/theme/tokens";
+import { useSyncStatus } from "@/sync/useSyncStatus";
+import { colors, fonts, space } from "@/theme/tokens";
+import { blockNameOf, packetOf } from "@/visit/wizard";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,10 +27,18 @@ function formatDue(raw: string): string {
  * only after the first attempt, so nobody is scolded for a form they have not
  * filled in yet.
  */
-export function VisitIntro({ record, onStart }: { record: VisitRecord; onStart: (name: string, email: string) => void }) {
-	const packet = record.packet as VisitPacket;
+interface Props {
+	record: VisitRecord;
+	/** The packet came from this device, so it may be out of date. */
+	fromCache: boolean;
+	onStart: (name: string, email: string) => void;
+}
+
+export function VisitIntro({ record, fromCache, onStart }: Props) {
+	const packet = packetOf(record);
 	const { visit } = packet;
 	const total = packet.checks?.length ?? 0;
+	const sync = useSyncStatus();
 
 	const [name, setName] = useState(record.inspector.name);
 	const [email, setEmail] = useState(record.inspector.email);
@@ -46,8 +57,9 @@ export function VisitIntro({ record, onStart }: { record: VisitRecord; onStart: 
 
 	return (
 		<Screen
-			title={visit.block_name || "Inspection"}
+			title={blockNameOf(record)}
 			sub="Fire-safety inspection"
+			action={<StatusPill {...sync} />}
 			footer={<Button label="Start inspection" size="lg" block onPress={start} />}
 		>
 			<Card>
@@ -59,63 +71,42 @@ export function VisitIntro({ record, onStart }: { record: VisitRecord; onStart: 
 				</Text>
 			</Card>
 
+			{fromCache || !sync.online ? <OfflineNotice /> : null}
+
 			<Card>
-				<Field
+				<TextField
 					label="Your name"
 					value={name}
 					onChange={setName}
-					placeholder="First and last name"
+					placeholder="e.g. Sam Okonkwo"
 					error={tried && !nameOk ? "Please enter your name." : null}
 					autoCapitalize="words"
 				/>
-				<Field
+				<TextField
 					label="Your email"
 					value={email}
 					onChange={setEmail}
-					placeholder="you@example.com"
+					placeholder="you@company.co.uk"
 					error={tried && !emailOk ? "Please enter a valid email address." : null}
 					keyboardType="email-address"
+					inputMode="email"
 					autoCapitalize="none"
 				/>
-				<Text style={styles.hint}>Both go on the logbook entry for this visit.</Text>
+				<Text style={styles.hint}>We use this to sign the inspection record. It goes on the report - nowhere else.</Text>
 			</Card>
 		</Screen>
 	);
 }
 
-function Field({
-	label,
-	value,
-	onChange,
-	placeholder,
-	error,
-	keyboardType,
-	autoCapitalize,
-}: {
-	label: string;
-	value: string;
-	onChange: (v: string) => void;
-	placeholder: string;
-	error: string | null;
-	keyboardType?: "email-address";
-	autoCapitalize?: "none" | "words";
-}) {
+/** Said whenever the packet came from this device or the signal has gone. It
+ *  is the difference between "this app is broken" and "carry on, it will send
+ *  itself" - the web app shows it in the same two cases. */
+function OfflineNotice() {
 	return (
-		<View style={styles.field}>
-			<Text style={styles.label}>{label}</Text>
-			<TextInput
-				accessibilityLabel={label}
-				value={value}
-				onChangeText={onChange}
-				placeholder={placeholder}
-				placeholderTextColor={colors.plateMuted}
-				keyboardType={keyboardType}
-				autoCapitalize={autoCapitalize}
-				autoCorrect={false}
-				style={[styles.input, error ? styles.inputBad : null]}
-			/>
-			{error ? <Text style={styles.error}>{error}</Text> : null}
-		</View>
+		<Card>
+			<Text style={styles.noticeTitle}>You&apos;re working offline</Text>
+			<Text style={styles.hint}>Your answers are saved on this device and will send themselves when you&apos;re back online.</Text>
+		</Card>
 	);
 }
 
@@ -124,20 +115,6 @@ const styles = StyleSheet.create({
 	blockName: { fontFamily: fonts.displayHeavy, fontSize: 22, color: colors.plateInk },
 	addr: { fontFamily: fonts.body, fontSize: 15, color: colors.plateMuted },
 	due: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.signalDeep, marginTop: space.s2 },
-	field: { gap: space.s2 },
-	label: { fontFamily: fonts.display, fontSize: 13, letterSpacing: 0.6, textTransform: "uppercase", color: colors.plateMuted },
-	input: {
-		minHeight: TAP,
-		borderWidth: 1,
-		borderColor: colors.plateEdgeStrong,
-		borderRadius: 10,
-		paddingHorizontal: space.s3,
-		fontFamily: fonts.body,
-		fontSize: 16,
-		color: colors.plateInk,
-		backgroundColor: colors.plate,
-	},
-	inputBad: { borderColor: colors.fail, borderWidth: 2 },
-	error: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.fail },
+	noticeTitle: { fontFamily: fonts.displayHeavy, fontSize: 16, color: colors.plateInk },
 	hint: { fontFamily: fonts.body, fontSize: 13, color: colors.plateMuted },
 });

@@ -8,13 +8,13 @@
 
 import { useLocalSearchParams } from "expo-router";
 
-import type { VisitPacket } from "@/api/contract";
 import { LoadingScreen } from "@/components/StatusScreen";
 import { ConnectionErrorScreen } from "@/screens/visit/ConnectionErrorScreen";
 import { DeadEndScreen } from "@/screens/visit/DeadEndScreen";
 import { SuccessScreen } from "@/screens/visit/SuccessScreen";
 import { VisitWizard } from "@/screens/visit/VisitWizard";
 import { useVisitLoad } from "@/visit/useVisitLoad";
+import { blockNameOf } from "@/visit/wizard";
 
 export default function VisitRoute() {
 	const { token } = useLocalSearchParams<{ token: string }>();
@@ -29,13 +29,11 @@ export default function VisitRoute() {
 			return <ConnectionErrorScreen mode="offline" onRetry={retry} />;
 		case "error":
 			return <ConnectionErrorScreen mode="error" onRetry={retry} />;
-		case "submitted": {
+		case "submitted":
 			// Reopening a finished link. Shown from cache without a request: the
 			// visit is locked, so asking the server could only fail underground.
-			const packet = state.record.packet as VisitPacket;
-			return <SuccessScreen blockName={packet.visit?.block_name} submitted={state.record.submitted} />;
-		}
+			return <SuccessScreen blockName={blockNameOf(state.record)} submitted={state.record.submitted} />;
 		case "ready":
-			return <VisitWizard record={state.record} />;
+			return <VisitWizard record={state.record} fromCache={state.fromCache} />;
 	}
 }

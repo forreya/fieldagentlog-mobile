@@ -1,12 +1,15 @@
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { DueChip, FrequencyBadge, RefTag } from "@/components/Badges";
 import { Button } from "@/components/Button";
 import { PhotoCapture } from "@/components/PhotoCapture";
 import { Card, Screen } from "@/components/Screen";
+import { StatusPill } from "@/components/StatusPill";
+import { TextField } from "@/components/TextField";
 import { SeveritySelect, VerdictControl } from "@/components/VerdictControl";
+import { useSyncStatus } from "@/sync/useSyncStatus";
 import { colors, fonts, space } from "@/theme/tokens";
-import { checksOf, currentCheck, failIsComplete, resultFor, type WizardAction, type WizardState } from "@/visit/wizard";
+import { blockNameOf, checksOf, currentCheck, failIsComplete, resultFor, type WizardAction, type WizardState } from "@/visit/wizard";
 
 /**
  * One check, one screen.
@@ -19,6 +22,7 @@ import { checksOf, currentCheck, failIsComplete, resultFor, type WizardAction, t
 export function CheckStep({ state, dispatch }: { state: WizardState; dispatch: (a: WizardAction) => void }) {
 	const check = currentCheck(state);
 	const checks = checksOf(state.record);
+	const sync = useSyncStatus();
 	if (!check) return null;
 
 	const result = resultFor(state, check.id);
@@ -29,8 +33,9 @@ export function CheckStep({ state, dispatch }: { state: WizardState; dispatch: (
 
 	return (
 		<Screen
-			title={(state.record.packet as { visit?: { block_name?: string } }).visit?.block_name || "Inspection"}
+			title={blockNameOf(state.record)}
 			sub={`Check ${state.checkIndex + 1} of ${checks.length} · ${answered} answered`}
+			action={<StatusPill {...sync} />}
 			footer={
 				<>
 					<Button label="Back" variant="ghostDark" onPress={() => dispatch({ type: "BACK" })} />
@@ -69,17 +74,13 @@ function FailDetail({ state, dispatch, checkId }: { state: WizardState; dispatch
 			</Text>
 			<SeveritySelect value={result.severity} onChange={(severity) => dispatch({ type: "SET_SEVERITY", checkId, severity })} />
 
-			<Text style={styles.label}>
-				What&apos;s wrong? <Text style={styles.required}>- required</Text>
-			</Text>
-			<TextInput
-				accessibilityLabel="What's wrong?"
+			<TextField
+				label="What's wrong?"
+				requirement="required"
 				value={result.note}
-				onChangeText={(note) => dispatch({ type: "SET_NOTE", checkId, note })}
+				onChange={(note) => dispatch({ type: "SET_NOTE", checkId, note })}
 				placeholder="Describe the fault so it can be fixed."
-				placeholderTextColor={colors.plateMuted}
 				multiline
-				style={styles.note}
 			/>
 
 			<Text style={styles.label}>
@@ -105,18 +106,5 @@ const styles = StyleSheet.create({
 	label: { fontFamily: fonts.display, fontSize: 13, letterSpacing: 0.6, textTransform: "uppercase", color: colors.plateMuted },
 	required: { color: colors.fail, letterSpacing: 0 },
 	optional: { color: colors.plateMuted, letterSpacing: 0 },
-	note: {
-		minHeight: 96,
-		borderWidth: 1,
-		borderColor: colors.plateEdgeStrong,
-		borderRadius: 10,
-		padding: space.s3,
-		fontFamily: fonts.body,
-		fontSize: 16,
-		color: colors.plateInk,
-		backgroundColor: colors.plate,
-		textAlignVertical: "top",
-	},
-	hint: { fontFamily: fonts.body, fontSize: 13, color: colors.plateMuted },
 	grow: { flex: 1 },
 });

@@ -49,8 +49,20 @@ function isNavigation(action: WizardAction): action is NavigationAction {
 	return NAVIGATION.has(action.type);
 }
 
+/** The packet, typed. It is stored as `unknown` because it is the server's
+ *  shape rendered verbatim, so every reader would otherwise cast - and one
+ *  reader had already invented its own narrower, wrong shape. */
+export function packetOf(record: VisitRecord): VisitPacket {
+	return record.packet as VisitPacket;
+}
+
 export function checksOf(record: VisitRecord): PacketCheck[] {
-	return ((record.packet as VisitPacket).checks ?? []) as PacketCheck[];
+	return (packetOf(record).checks ?? []) as PacketCheck[];
+}
+
+/** What the app bar says on every wizard screen. */
+export function blockNameOf(record: VisitRecord): string {
+	return packetOf(record).visit?.block_name || "Inspection";
 }
 
 function emptyResult(): CheckResult {

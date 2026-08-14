@@ -1,13 +1,15 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { FraAction, Verdict, VisitPacket } from "@/api/contract";
+import type { FraAction, Verdict } from "@/api/contract";
 import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
+import { StatusPill } from "@/components/StatusPill";
 import { VerdictMark } from "@/components/VerdictMark";
 import type { VisitRecord } from "@/db/types";
 import { colors, fonts, radii, space } from "@/theme/tokens";
+import { useSyncStatus } from "@/sync/useSyncStatus";
 import type { SubmitPhase } from "@/visit/useSubmit";
-import { answeredCount, checksOf, incompleteFailures, type WizardAction, type WizardState } from "@/visit/wizard";
+import { answeredCount, blockNameOf, checksOf, incompleteFailures, packetOf, type WizardAction, type WizardState } from "@/visit/wizard";
 
 import { FraReview } from "./FraReview";
 
@@ -54,17 +56,18 @@ export function VisitSummary({ state, dispatch, phase, onSubmit }: SummaryProps)
 	const incomplete = incompleteFailures(record);
 	const ready = unanswered === 0 && incomplete.length === 0;
 	const action = submitAction(phase, ready);
+	const sync = useSyncStatus();
 
 	// Judging open fire-risk-assessment actions is the responsible person's
 	// call, not a cleaner's, so a visit handed over from the cleaner app skips
 	// that review. It is optional anyway - untouched actions submit nothing.
-	const packet = record.packet as VisitPacket;
-	const fraActions: FraAction[] = record.cleaner_handoff ? [] : (packet.fra_actions ?? []);
+	const fraActions: FraAction[] = record.cleaner_handoff ? [] : (packetOf(record).fra_actions ?? []);
 
 	return (
 		<Screen
-			title={packet.visit?.block_name || "Inspection"}
+			title={blockNameOf(record)}
 			sub="Review and submit"
+			action={<StatusPill {...sync} />}
 			footer={
 				<>
 					<Button label="Back" variant="ghostDark" onPress={() => dispatch({ type: "BACK" })} />

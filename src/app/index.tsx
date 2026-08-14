@@ -5,12 +5,14 @@ import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
 import { StatusPill } from "@/components/StatusPill";
 import { backendSummary } from "@/lib/config";
+import { useSyncStatus } from "@/sync/useSyncStatus";
 import { APP_NAME } from "@/lib/constants";
 import { colors, fonts, space } from "@/theme/tokens";
 
 export default function Index() {
+	const sync = useSyncStatus();
 	return (
-		<Screen title={APP_NAME} sub="Fire-safety inspections" action={<StatusPill online />}>
+		<Screen title={APP_NAME} sub="Fire-safety inspections" action={<StatusPill {...sync} />}>
 			<Card>
 				<Text style={styles.h}>Got a visit link?</Text>
 				<Text style={styles.p}>

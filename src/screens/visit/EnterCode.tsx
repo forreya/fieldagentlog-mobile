@@ -9,12 +9,13 @@
 
 import { router } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
+import { TextField } from "@/components/TextField";
 import { parseToken } from "@/lib/token";
-import { colors, fonts, radii, space } from "@/theme/tokens";
+import { colors, fonts, space } from "@/theme/tokens";
 
 export function EnterCode() {
 	const [value, setValue] = useState("");
@@ -43,47 +44,26 @@ export function EnterCode() {
 			}
 		>
 			<Card>
-				<Text style={styles.label}>Visit link or code</Text>
-				<CodeInput
+				<TextField
+					label="Visit link or code"
 					value={value}
 					onChange={(next) => {
 						setValue(next);
 						if (error) setError(null);
 					}}
+					placeholder="fieldagentlog.com/v/..."
+					error={error}
+					multiline
+					mono
+					inputMode="url"
+					autoCapitalize="none"
+					returnKeyType="go"
 					onSubmit={open}
 				/>
-				{error ? (
-					<Text accessibilityRole="alert" style={styles.error}>
-						{error}
-					</Text>
-				) : null}
 			</Card>
 
 			<Help />
 		</Screen>
-	);
-}
-
-function CodeInput({ value, onChange, onSubmit }: { value: string; onChange: (next: string) => void; onSubmit: () => void }) {
-	return (
-		<TextInput
-			accessibilityLabel="Visit link or code"
-			value={value}
-			onChangeText={onChange}
-			placeholder="fieldagentlog.com/v/..."
-			placeholderTextColor={colors.plateMuted}
-			// A visit code is hex, so every one of these would only get in the
-			// way: no capitals, no autocorrect, no smart punctuation.
-			autoCapitalize="none"
-			autoCorrect={false}
-			autoComplete="off"
-			spellCheck={false}
-			inputMode="url"
-			multiline
-			returnKeyType="go"
-			onSubmitEditing={onSubmit}
-			style={styles.input}
-		/>
 	);
 }
 
@@ -103,19 +83,6 @@ function Help() {
 
 const styles = StyleSheet.create({
 	grow: { flex: 1 },
-	label: { fontFamily: fonts.bodyMedium, fontSize: 13, letterSpacing: 0.4, textTransform: "uppercase", color: colors.plateMuted },
-	input: {
-		minHeight: 96,
-		borderWidth: 1,
-		borderColor: colors.plateEdgeStrong,
-		borderRadius: radii.sm,
-		padding: space.s3,
-		fontFamily: fonts.mono,
-		fontSize: 15,
-		color: colors.plateInk,
-		textAlignVertical: "top",
-	},
-	error: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.fail },
 	help: { gap: space.s2 },
 	helpTitle: { fontFamily: fonts.displayHeavy, fontSize: 16, color: colors.plateInk },
 	helpBody: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.plateMuted },

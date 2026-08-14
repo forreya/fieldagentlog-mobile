@@ -35,6 +35,10 @@ export interface SyncSource {
 
 export interface SyncState {
 	status: "idle" | "syncing";
+	/** Whether the device currently has a usable connection. Part of the
+	 *  emitted state, not a separate field: a pill that only learns about the
+	 *  network when a pass happens to run would sit on "Online" underground. */
+	online: boolean;
 	/** Tasks still queued after the last pass. */
 	pending: number;
 	/** Last failure worth showing, or null. */
@@ -85,10 +89,7 @@ export class SyncEngine {
 	/** A pass requested while one was already running. */
 	private rerunRequested = false;
 	private timer: ReturnType<typeof setTimeout> | null = null;
-	private state: SyncState = { status: "idle", pending: 0, lastError: null, failures: 0 };
-
-	/** Whether the device currently has a usable connection. */
-	private online = true;
+	private state: SyncState = { status: "idle", online: true, pending: 0, lastError: null, failures: 0 };
 
 	register(source: SyncSource): () => void {
 		this.sources.push(source);
@@ -113,13 +114,13 @@ export class SyncEngine {
 
 	/** Tell the engine whether there is signal. Flushes when it returns. */
 	setOnline(online: boolean): void {
-		const regained = online && !this.online;
-		this.online = online;
-		if (regained) void this.sync("connection regained");
+		if (online === this.state.online) return;
+		this.emit({ online });
+		if (online) void this.sync("connection regained");
 	}
 
 	isOnline(): boolean {
-		return this.online;
+		return this.state.online;
 	}
 
 	/**
@@ -128,7 +129,7 @@ export class SyncEngine {
 	 * rather than queueing an unbounded pile of them.
 	 */
 	async sync(reason: string): Promise<PassResult | null> {
-		if (!this.online) return null;
+		if (!this.state.online) return null;
 		if (this.running) {
 			this.rerunRequested = true;
 			return null;
@@ -234,8 +235,7 @@ export class SyncEngine {
 		this.listeners.clear();
 		this.running = false;
 		this.rerunRequested = false;
-		this.online = true;
-		this.state = { status: "idle", pending: 0, lastError: null, failures: 0 };
+		this.state = { status: "idle", online: true, pending: 0, lastError: null, failures: 0 };
 	}
 }
 
