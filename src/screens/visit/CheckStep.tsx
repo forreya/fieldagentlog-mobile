@@ -1,0 +1,102 @@
+import { StyleSheet, Text, TextInput, View } from "react-native";
+
+import { DueChip, FrequencyBadge, RefTag } from "@/components/Badges";
+import { Button } from "@/components/Button";
+import { Card, Screen } from "@/components/Screen";
+import { SeveritySelect, VerdictControl } from "@/components/VerdictControl";
+import { colors, fonts, space } from "@/theme/tokens";
+import { checksOf, currentCheck, failIsComplete, resultFor, type WizardAction, type WizardState } from "@/visit/wizard";
+
+/**
+ * One check, one screen.
+ *
+ * Advancing is blocked until the verdict is complete: a failure needs a
+ * severity and a note, because a logbook entry saying only "failed" tells
+ * whoever has to fix it nothing. The photo stays optional - not everything
+ * worth failing is photographable.
+ */
+export function CheckStep({ state, dispatch }: { state: WizardState; dispatch: (a: WizardAction) => void }) {
+	const check = currentCheck(state);
+	const checks = checksOf(state.record);
+	if (!check) return null;
+
+	const result = resultFor(state, check.id);
+	const isFail = result.verdict === "fail";
+	const canAdvance = result.verdict !== null && failIsComplete(result);
+	const isLast = state.checkIndex === checks.length - 1;
+	const answered = checks.filter((c) => state.record.results[c.id]?.verdict).length;
+
+	return (
+		<Screen
+			title={(state.record.packet as { visit?: { block_name?: string } }).visit?.block_name || "Inspection"}
+			sub={`Check ${state.checkIndex + 1} of ${checks.length} · ${answered} answered`}
+			footer={
+				<>
+					<Button label="Back" variant="ghostDark" onPress={() => dispatch({ type: "BACK" })} />
+					<Button label={isLast ? "Review" : "Next"} disabled={!canAdvance} block onPress={() => dispatch({ type: "NEXT" })} style={styles.grow} />
+				</>
+			}
+		>
+			<Card>
+				<View style={styles.meta}>
+					<FrequencyBadge label={check.freq_label} />
+					<DueChip status={check.status} label={check.status_label} />
+				</View>
+				{check.standard_ref ? <RefTag>{check.standard_ref}</RefTag> : null}
+				{check.code ? <Text style={styles.code}>{check.code}</Text> : null}
+				<Text style={styles.title}>{check.title}</Text>
+				{check.todo ? <Text style={styles.todo}>{check.todo}</Text> : null}
+				{check.responsibility ? <Text style={styles.resp}>Responsible: {check.responsibility}</Text> : null}
+			</Card>
+
+			<VerdictControl value={result.verdict} onChange={(verdict) => dispatch({ type: "SET_VERDICT", checkId: check.id, verdict })} />
+
+			{isFail ? (
+				<Card>
+					<Text style={styles.label}>
+						Severity <Text style={styles.required}>- required</Text>
+					</Text>
+					<SeveritySelect value={result.severity} onChange={(severity) => dispatch({ type: "SET_SEVERITY", checkId: check.id, severity })} />
+
+					<Text style={styles.label}>
+						What&apos;s wrong? <Text style={styles.required}>- required</Text>
+					</Text>
+					<TextInput
+						accessibilityLabel="What's wrong?"
+						value={result.note}
+						onChangeText={(note) => dispatch({ type: "SET_NOTE", checkId: check.id, note })}
+						placeholder="Describe the fault so it can be fixed."
+						placeholderTextColor={colors.plateMuted}
+						multiline
+						style={styles.note}
+					/>
+					<Text style={styles.hint}>Photos arrive in the next phase.</Text>
+				</Card>
+			) : null}
+		</Screen>
+	);
+}
+
+const styles = StyleSheet.create({
+	meta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space.s2 },
+	code: { fontFamily: fonts.mono, fontSize: 12, color: colors.plateMuted },
+	title: { fontFamily: fonts.displayHeavy, fontSize: 21, color: colors.plateInk, lineHeight: 27 },
+	todo: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: colors.plateInk },
+	resp: { fontFamily: fonts.body, fontSize: 13, color: colors.plateMuted },
+	label: { fontFamily: fonts.display, fontSize: 13, letterSpacing: 0.6, textTransform: "uppercase", color: colors.plateMuted },
+	required: { color: colors.fail, letterSpacing: 0 },
+	note: {
+		minHeight: 96,
+		borderWidth: 1,
+		borderColor: colors.plateEdgeStrong,
+		borderRadius: 10,
+		padding: space.s3,
+		fontFamily: fonts.body,
+		fontSize: 16,
+		color: colors.plateInk,
+		backgroundColor: colors.plate,
+		textAlignVertical: "top",
+	},
+	hint: { fontFamily: fonts.body, fontSize: 13, color: colors.plateMuted },
+	grow: { flex: 1 },
+});

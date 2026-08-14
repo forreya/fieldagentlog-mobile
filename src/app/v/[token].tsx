@@ -13,6 +13,7 @@ import { Card, Screen } from "@/components/Screen";
 import { LoadingScreen } from "@/components/StatusScreen";
 import { ConnectionErrorScreen } from "@/screens/visit/ConnectionErrorScreen";
 import { DeadEndScreen } from "@/screens/visit/DeadEndScreen";
+import { VisitWizard } from "@/screens/visit/VisitWizard";
 import { colors, fonts } from "@/theme/tokens";
 import { useVisitLoad } from "@/visit/useVisitLoad";
 
@@ -30,22 +31,17 @@ export default function VisitRoute() {
 		case "error":
 			return <ConnectionErrorScreen mode="error" onRetry={retry} />;
 		case "submitted":
-		case "ready": {
-			// The wizard itself arrives in C2-C5. Until then this proves the load
-			// path end to end: the right visit, the right checks, from cache or not.
-			const packet = state.record.packet as { visit?: { block_name?: string; due_date?: string }; checks?: unknown[] };
+			// The locked success screen arrives with submit, in C5.
 			return (
-				<Screen title={packet.visit?.block_name ?? "Visit"} sub={state.status === "submitted" ? "Already submitted" : "Loaded"}>
+				<Screen title="Visit complete" sub="Already submitted">
 					<Card>
-						<Text style={styles.h}>{state.status === "submitted" ? "This visit is complete" : "Ready to inspect"}</Text>
-						<Text style={styles.p}>
-							{packet.checks?.length ?? 0} check(s) due{packet.visit?.due_date ? `, by ${packet.visit.due_date}` : ""}.
-							{state.status === "ready" && state.fromCache ? " Working from the copy saved on this device." : ""}
-						</Text>
+						<Text style={styles.h}>This visit is complete</Text>
+						<Text style={styles.p}>It was submitted from this device and can no longer be edited.</Text>
 					</Card>
 				</Screen>
 			);
-		}
+		case "ready":
+			return <VisitWizard record={state.record} />;
 	}
 }
 

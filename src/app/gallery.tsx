@@ -1,10 +1,13 @@
 import { router } from "expo-router";
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { DueChip, FrequencyBadge, RefTag } from "@/components/Badges";
 import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
+import { SeveritySelect, VerdictControl } from "@/components/VerdictControl";
 import { StatusPill } from "@/components/StatusPill";
+import type { Severity, Verdict } from "@/api/contract";
 import { colors, fonts, space, TAP_VERDICT } from "@/theme/tokens";
 
 /**
@@ -13,6 +16,9 @@ import { colors, fonts, space, TAP_VERDICT } from "@/theme/tokens";
  * nothing links here from the shipped flows.
  */
 export default function Gallery() {
+	const [verdict, setVerdict] = useState<Verdict | null>(null);
+	const [severity, setSeverity] = useState<Severity | null>(null);
+
 	return (
 		<Screen
 			title="Gallery"
@@ -39,6 +45,15 @@ export default function Gallery() {
 					<DueChip status="ok" label="Scheduled" />
 				</View>
 				<RefTag>BS 5266-1</RefTag>
+			</Section>
+
+			<Section title="Verdict control">
+				<VerdictControl value={verdict} onChange={setVerdict} />
+				<Text style={styles.note}>Tap targets {TAP_VERDICT}pt. Shape + word, never colour alone.</Text>
+			</Section>
+
+			<Section title="Severity ramp (shown on a failure)">
+				<SeveritySelect value={severity} onChange={setSeverity} />
 			</Section>
 
 			<Section title="Verdict colours">
