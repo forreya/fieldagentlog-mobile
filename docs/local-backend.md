@@ -1,0 +1,77 @@
+# Running against a local BalanceBuddy
+
+The signed-in half of this app cannot be tested without a real Supabase session:
+the broker functions want a JWT, and there is no test account on the live
+project. This is how to stand up a local one - real Postgres, real Auth, real
+Edge Functions - so agent, cleaner and staff flows can be driven end to end.
+
+Everything lives outside both repos. **`balancebuddy-web` is never modified.**
+
+## Why not just replay their migrations
+
+Two reasons, both discovered the hard way:
+
+- The repo has **31 duplicate version prefixes** (`0029_payee…` and
+  `0029_phase9…`). The CLI derives the version from the leading digits and
+  refuses the second one.
+- Some migrations are not replayable from empty. `0047` passes an integer where
+  `substring()` wants an escape character; it presumably ran against a state
+  where it was never evaluated.
+
+So the local stack takes **only the fire-safety migrations, verbatim**, plus a
+short prelude creating what they reference (`organizations`, `blocks`,
+`organization_members`, `effective_block_role()`, and the handful of `blocks`
+columns `visit-packet` selects). The tables under test are production's; only
+their surroundings are stubbed.
+
+## Setup
+
+```bash
+mkdir -p /tmp/bb-local && cd /tmp/bb-local && npx supabase init
+cp -R ~/Desktop/Code/balancebuddy-web/supabase/functions/{_shared,field-agent,visit-packet,visit-photo,visit-submit} supabase/functions/
+cp ~/Desktop/Code/balancebuddy-web/supabase/migrations/{0178_block_fire_profile,0179_fire_check_catalogue,0180_block_fire_checks,0181_fire_visits,0182_fire_safety_defects,0237_field_agent_assignments}.sql supabase/migrations/
+```
+
+Then add the prelude, the two `ALTER TABLE`s and the grants (see
+`scratchpad/bb-local/supabase/migrations/`), and in `config.toml`:
+
+```toml
+[functions.visit-packet]
+verify_jwt = false
+[functions.visit-photo]
+verify_jwt = false
+[functions.visit-submit]
+verify_jwt = false
+```
+
+That last block matters: production sets `verify_jwt: false` on the visit
+functions because the inspector has no account and the per-visit token **is**
+the credential. Without it the gateway rejects them before they run.
+
+```bash
+npx supabase start && ./setup.sh     # seeds an org, 3 blocks, an agent
+```
+
+## Pointing the app at it
+
+```bash
+EXPO_PUBLIC_SUPABASE_URL=http://<your-lan-ip>:54321
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<ANON_KEY from supabase status>
+```
+
+The LAN IP, not `localhost` - the simulator and emulator are not the host.
+Sign in as `agent@example.test` / `fieldagent123`.
+
+## Three things that fail silently
+
+Worth knowing, because each one looks like an app bug:
+
+- **No table grants.** A hosted project sets default privileges before any
+  migration; a trimmed set does not. Every read then fails with "permission
+  denied", the broker swallows it, and the app shows an empty dashboard.
+- **A missing column in a `select()`.** `visit-packet` selects
+  `cleaner_assignable` (added by the cleaner migration). Without it the whole
+  check query errors, the function does not inspect that error, and the packet
+  arrives with an empty checklist.
+- **`fire_visits.scope`** is added by the same cleaner migration and read on
+  every packet request.

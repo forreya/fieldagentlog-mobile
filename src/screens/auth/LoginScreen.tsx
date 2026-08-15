@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
@@ -25,6 +25,11 @@ export function LoginScreen() {
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	// The guard on (app) keeps signed-out people OUT; nothing was pulling a
+	// signed-in one IN, so a successful sign-in sat on this screen doing
+	// nothing. Declarative rather than a push inside submit(): the session is
+	// adopted asynchronously, and this also covers arriving here already
+	// signed in.
 	const emailOk = EMAIL_RE.test(email.trim());
 	const passwordOk = password.length > 0;
 
@@ -36,10 +41,12 @@ export function LoginScreen() {
 		setBusy(true);
 		const result = await signIn(email, password);
 		setBusy(false);
-		// On success the provider adopts the session and the guard moves us;
-		// there is nothing to navigate to from here.
+		// On success the provider adopts the session and the redirect above
+		// fires; only a failure needs handling here.
 		if (result.error) setError(result.error);
 	}
+
+	if (state.status === "signed_in" || state.status === "role_unknown") return <Redirect href="/(app)" />;
 
 	return (
 		<Screen

@@ -72,6 +72,14 @@ rather than only thrown. The engine schedules no retry for one, but app start,
 reconnect and foreground would each offer the task again - a spent token was
 re-POSTed ten times in a minute before this was written down.
 
+## Testing against a real backend
+
+The signed-in half cannot be exercised without a Supabase session. `docs/local-backend.md`
+stands up a local BalanceBuddy - real Postgres, Auth and Edge Functions - from
+that repo's own fire-safety migrations. Both routing bugs in D3 were found the
+first time the app ran against it and would not have been caught by any test
+written against a mock.
+
 ## Reads and writes are cached by different things
 
 `src/sync` queues **writes the device owns** and must never lose. `src/data`

@@ -1,6 +1,7 @@
-import { Link, router } from "expo-router";
+import { Link, Redirect, router } from "expo-router";
 import { StyleSheet, Text } from "react-native";
 
+import { useAuth } from "@/auth/AuthProvider";
 import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
 import { StatusPill } from "@/components/StatusPill";
@@ -10,6 +11,13 @@ import { colors, fonts, space } from "@/theme/tokens";
 
 export default function Index() {
 	const sync = useSyncStatus();
+	const { state } = useAuth();
+
+	// Someone signed in belongs on their own blocks, not on the page that
+	// explains what a visit link is. The inspector landing is for the people
+	// who have no account - which is most of the people who open this app.
+	if (state.status === "signed_in" || state.status === "role_unknown") return <Redirect href="/(app)" />;
+
 	return (
 		<Screen title={APP_NAME} sub="Fire-safety inspections" action={<StatusPill {...sync} />}>
 			<Card>
