@@ -15,6 +15,7 @@ UI layers arrive in C-F.
 | `src/api`          | Network calls, error taxonomy                                      | Retry, queue                    |
 | `src/db`           | SQLite + photo files                                               | Talk to the network             |
 | `src/sync`         | Queues, ordering, retries, backoff                                 | Render                          |
+| `src/data`         | Server state: cached reads, freshness                              | Queue writes                    |
 | `src/auth`         | Session storage, role resolution                                   | Decide permissions              |
 | `src/bootstrap.ts` | Composition root: opens storage, registers queues, starts triggers | Contain logic, hold queue state |
 
@@ -70,6 +71,19 @@ A failure that retrying cannot fix is recorded on the record (`submit_error`)
 rather than only thrown. The engine schedules no retry for one, but app start,
 reconnect and foreground would each offer the task again - a spent token was
 re-POSTed ten times in a minute before this was written down.
+
+## Reads and writes are cached by different things
+
+`src/sync` queues **writes the device owns** and must never lose. `src/data`
+caches **reads the server owns** and can always re-fetch. They are deliberately
+separate: putting a dashboard refresh in the same retry loop as an inspection
+someone spent an hour on gets one of them wrong.
+
+The read cache (TanStack Query, persisted to AsyncStorage) exists so an agent in
+a car park sees yesterday's round instead of a spinner. Everything shown from
+cache carries when it was fetched - a stale list is useful, a stale list
+pretending to be current is not. A failed refresh with data underneath is not an
+error state; it is the list plus a caption.
 
 **Connectivity means `isConnected`, not `isInternetReachable`.** Measured on a
 device: NetInfo re-probes reachability only every 60 s once it believes there is

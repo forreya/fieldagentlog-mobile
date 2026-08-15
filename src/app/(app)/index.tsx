@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { StyleSheet, Text } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
+import { AgentHome } from "@/screens/agent/AgentHome";
 import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
 import { StatusPill } from "@/components/StatusPill";
@@ -21,6 +22,9 @@ export default function SignedInHome() {
 	const { state, signOut } = useAuth();
 	const sync = useSyncStatus();
 	if (state.status !== "signed_in") return null;
+	// Agents first: they exercise the broker path, and staff (D6) is largely the
+	// same screens with a different data source.
+	if (state.role === "agent") return <AgentHome />;
 
 	return (
 		<Screen

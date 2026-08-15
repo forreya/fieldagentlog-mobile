@@ -1,13 +1,20 @@
 import { Archivo_400Regular, Archivo_600SemiBold, Archivo_700Bold, Archivo_800ExtraBold, useFonts } from "@expo-google-fonts/archivo";
 import { IBMPlexMono_500Medium } from "@expo-google-fonts/ibm-plex-mono";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 
 import { AuthProvider } from "@/auth/AuthProvider";
 import { bootstrap } from "@/bootstrap";
+import { createPersister, createQueryClient, persistOptions } from "@/data/queryClient";
 
 SplashScreen.preventAutoHideAsync();
+
+// Made once, outside the component: a client rebuilt on re-render is a cache
+// thrown away on re-render.
+const queryClient = createQueryClient();
+const persister = createPersister();
 
 /**
  * Fonts are BUNDLED (not fetched), because the app has to open in a basement.
@@ -38,8 +45,10 @@ export default function RootLayout() {
 
 	if (!ready && !error) return null;
 	return (
-		<AuthProvider>
-			<Stack screenOptions={{ headerShown: false }} />
-		</AuthProvider>
+		<PersistQueryClientProvider client={queryClient} persistOptions={{ persister, ...persistOptions }}>
+			<AuthProvider>
+				<Stack screenOptions={{ headerShown: false }} />
+			</AuthProvider>
+		</PersistQueryClientProvider>
 	);
 }
