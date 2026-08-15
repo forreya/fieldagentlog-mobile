@@ -16,5 +16,11 @@
 		"src/lib/geocode.ts": "Caches in localStorage; needs the cache injected rather than assumed.",
 		"src/lib/types.ts": "Contract types are identical, but the queue types carry Blob; mobile stores photo bytes as files on disk.",
 		"src/lib/sync.ts": "buildSubmitBody is pure; the rest imports the web IndexedDB layer."
+	},
+	"deliberatelyNotMirrored": {
+		"//": "Ported by hand and allowed to diverge, decided 2026-08-15. Unlike src/shared, none of this is a compliance surface: two clients ordering a list differently is cosmetic, not a wrong answer about whether a check is overdue. Mirroring it would need a refactor in ../fieldagent (its nearby.ts reaches a localStorage-backed geocode cache), which is that repo's call to make.",
+		"src/lib/nearby.ts": "Search matching, distance sorting and distance formatting. Close port of the web app's src/lib/nearby.ts, minus its `locate` (which is platform-bound).",
+		"src/lib/geo.ts": "haversineKm, verbatim from the web app's cluster.ts.",
+		"src/lib/geocode.ts": "postcodes.io lookup. Same protocol, different cache: AsyncStorage here, localStorage there."
 	}
 }

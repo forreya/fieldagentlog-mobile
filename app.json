@@ -25,12 +25,22 @@
 			},
 			"predictiveBackGestureEnabled": false,
 			"package": "com.fieldagentlog.app",
-			"blockedPermissions": ["android.permission.RECORD_AUDIO", "android.permission.READ_MEDIA_VIDEO"],
+			"blockedPermissions": [
+				"android.permission.RECORD_AUDIO",
+				"android.permission.READ_MEDIA_VIDEO",
+				"android.permission.ACCESS_BACKGROUND_LOCATION"
+			],
 			"intentFilters": [
 				{
 					"action": "VIEW",
 					"autoVerify": true,
-					"data": [{ "scheme": "https", "host": "fieldagentlog.com", "pathPrefix": "/v/" }],
+					"data": [
+						{
+							"scheme": "https",
+							"host": "fieldagentlog.com",
+							"pathPrefix": "/v/"
+						}
+					],
 					"category": ["BROWSABLE", "DEFAULT"]
 				}
 			]
@@ -57,6 +67,15 @@
 				{
 					"photosPermission": "FieldAgentLog uses your photos so you can attach an existing picture of a fault to a check.",
 					"cameraPermission": "FieldAgentLog uses the camera so you can photograph a fault as evidence on the fire logbook."
+				}
+			],
+			[
+				"expo-location",
+				{
+					"locationAlwaysAndWhenInUsePermission": "FieldAgentLog uses your location only when you ask it to sort your blocks by distance. It is never tracked in the background.",
+					"locationWhenInUsePermission": "FieldAgentLog uses your location only when you ask it to sort your blocks by distance. It is never tracked in the background.",
+					"isIosBackgroundLocationEnabled": false,
+					"isAndroidBackgroundLocationEnabled": false
 				}
 			]
 		],

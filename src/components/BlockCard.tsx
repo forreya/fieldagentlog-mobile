@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { formatDistance } from "@/lib/nearby";
 import { dueLabel, type BlockWithJobs, type DueLevel } from "@/shared/fireData";
 import { colors, fonts, radii, space } from "@/theme/tokens";
 
@@ -21,7 +22,7 @@ export function blockStatus(block: BlockWithJobs): { text: string; level: DueLev
  * beats up-to-date - then up to three of the jobs behind it, because an agent
  * deciding where to go next wants to know what is waiting, not just how much.
  */
-export function BlockCard({ block, onOpen }: { block: BlockWithJobs; onOpen: () => void }) {
+export function BlockCard({ block, onOpen, distanceKm }: { block: BlockWithJobs; onOpen: () => void; distanceKm?: number }) {
 	const status = blockStatus(block);
 	const preview = block.jobs.filter((job) => job.level !== "upcoming").slice(0, 3);
 	const more = block.overdue + block.soon - preview.length;
@@ -29,7 +30,7 @@ export function BlockCard({ block, onOpen }: { block: BlockWithJobs; onOpen: () 
 	return (
 		<Pressable
 			accessibilityRole="button"
-			accessibilityLabel={`${block.name}. ${status.text}`}
+			accessibilityLabel={`${block.name}. ${status.text}${distanceKm === undefined ? "" : `. ${formatDistance(distanceKm)} away`}`}
 			onPress={onOpen}
 			style={({ pressed }) => [styles.card, pressed && styles.pressed]}
 		>
@@ -41,6 +42,7 @@ export function BlockCard({ block, onOpen }: { block: BlockWithJobs; onOpen: () 
 							{block.address}
 						</Text>
 					) : null}
+					{distanceKm === undefined ? null : <Text style={styles.distance}>{formatDistance(distanceKm)} away</Text>}
 				</View>
 				<StatusTag text={status.text} level={status.level} />
 			</View>
@@ -86,6 +88,7 @@ const styles = StyleSheet.create({
 	id: { flex: 1, gap: 2 },
 	name: { fontFamily: fonts.displayHeavy, fontSize: 17, color: colors.plateInk },
 	address: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.plateMuted },
+	distance: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.signalDeep, marginTop: 2 },
 	tag: { paddingVertical: 5, paddingHorizontal: space.s3, borderRadius: radii.sm },
 	tagText: { fontFamily: fonts.displayHeavy, fontSize: 12, letterSpacing: 0.4 },
 	jobs: { gap: space.s2, borderTopWidth: 1, borderTopColor: colors.plateEdge, paddingTop: space.s3 },

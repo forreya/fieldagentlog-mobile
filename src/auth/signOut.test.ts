@@ -16,16 +16,6 @@ import { endSession } from "./AuthProvider";
 import { recallRole, rememberRole } from "./roleCache";
 
 jest.mock("expo-sqlite");
-jest.mock("@react-native-async-storage/async-storage", () => {
-	const store = new Map<string, string>();
-	return {
-		__store: store,
-		getItem: jest.fn(async (k: string) => store.get(k) ?? null),
-		setItem: jest.fn(async (k: string, v: string) => void store.set(k, v)),
-		removeItem: jest.fn(async (k: string) => void store.delete(k)),
-	};
-});
-
 // `mock`-prefixed so the factory may close over it (a jest hoisting rule).
 const mockSignOut = jest.fn(async () => ({ error: null }));
 jest.mock("./supabase", () => ({

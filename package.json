@@ -23,6 +23,7 @@
 		"expo-image-manipulator": "~57.0.9",
 		"expo-image-picker": "~57.0.9",
 		"expo-linking": "~57.0.5",
+		"expo-location": "~57.0.10",
 		"expo-router": "~57.0.12",
 		"expo-secure-store": "~57.0.1",
 		"expo-splash-screen": "~57.0.6",
@@ -72,6 +73,9 @@
 	},
 	"private": true,
 	"jest": {
-		"preset": "jest-expo"
+		"preset": "jest-expo",
+		"setupFiles": [
+			"<rootDir>/jest.setup.js"
+		]
 	}
 }

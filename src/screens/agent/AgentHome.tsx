@@ -3,10 +3,13 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native
 
 import { useAuth } from "@/auth/AuthProvider";
 import { BlockCard } from "@/components/BlockCard";
+import { FindBar } from "@/components/FindBar";
 import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
 import { StatusPill } from "@/components/StatusPill";
+import { useFind } from "@/data/useFind";
 import { freshnessLabel, useDashboard, type DashboardView } from "@/data/useDashboard";
+import type { BlockWithJobs } from "@/shared/fireData";
 import { useSyncStatus } from "@/sync/useSyncStatus";
 import { colors, fonts, space } from "@/theme/tokens";
 
@@ -38,8 +41,12 @@ export function AgentHome() {
 	);
 }
 
+/** Stable empty list, so the finder does not re-run while the blocks load. */
+const NO_BLOCKS: BlockWithJobs[] = [];
+
 function Body({ dashboard }: { dashboard: DashboardView }) {
 	const { data, loading, refreshing, error, updatedAt, refresh } = dashboard;
+	const find = useFind(data?.blocks ?? NO_BLOCKS);
 
 	if (loading) return <Note title="Loading your blocks" body="This only takes a moment." />;
 
@@ -64,9 +71,31 @@ function Body({ dashboard }: { dashboard: DashboardView }) {
 			{data.blocks.length === 0 ? (
 				<Note title="No blocks assigned" body="When a managing agent assigns you blocks, they'll appear here." />
 			) : (
-				data.blocks.map((block) => (
-					<BlockCard key={block.id} block={block} onOpen={() => router.push({ pathname: "/(app)/block/[id]", params: { id: block.id } })} />
-				))
+				<>
+					{/* Only worth the space once there is a list to search. */}
+					{data.blocks.length > 3 ? (
+						<FindBar
+							query={find.query}
+							onQuery={find.setQuery}
+							near={find.near}
+							onToggleNear={find.toggleNear}
+							error={find.error}
+							showing={{ shown: find.results.length, total: data.blocks.length }}
+						/>
+					) : null}
+					{find.results.length === 0 ? (
+						<Note title="Nothing matches that" body="Try part of the name, the street or the postcode." />
+					) : (
+						find.results.map((block) => (
+							<BlockCard
+								key={block.id}
+								block={block}
+								distanceKm={find.distances.get(block.id)}
+								onOpen={() => router.push({ pathname: "/(app)/block/[id]", params: { id: block.id } })}
+							/>
+						))
+					)}
+				</>
 			)}
 		</ScrollView>
 	);
