@@ -4,7 +4,9 @@
 // by itself later, with nobody watching.
 
 import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as SQLite from "expo-sqlite";
+import type { ReactNode } from "react";
 
 import { ApiError } from "@/api/errors";
 import * as visitApi from "@/api/visit";
@@ -50,12 +52,17 @@ beforeEach(async () => {
 	syncEngine.reset();
 	syncEngine.register(createVisitSource(heldVisits));
 	api.submitVisit.mockResolvedValue({ ok: true, visit_id: "v1", logbook_pdf_url: "https://pdf" });
+	queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 	await saveVisit(record());
 });
 
+// The hook invalidates query caches when a submit lands, so it needs a client.
+let queries: QueryClient;
+const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queries}>{children}</QueryClientProvider>;
+
 /** renderHook is async in RNTL 14 - it does its own act() pass. */
 async function mount() {
-	return renderHook(() => useSubmit(record(), jest.fn()));
+	return renderHook(() => useSubmit(record(), jest.fn()), { wrapper });
 }
 
 describe("with signal", () => {
@@ -161,7 +168,7 @@ describe("a permanent failure recorded on the record", () => {
 		const dead = record({ submit_error: { message: "This link can't be used.", at: 5 } });
 		await saveVisit(dead);
 
-		const { result } = await renderHook(() => useSubmit(dead, jest.fn()));
+		const { result } = await renderHook(() => useSubmit(dead, jest.fn()), { wrapper });
 
 		expect(result.current.phase).toEqual({ kind: "blocked", message: "This link can't be used." });
 	});
@@ -169,7 +176,7 @@ describe("a permanent failure recorded on the record", () => {
 	test("is cleared by Try again, so the queue picks the visit up once more", async () => {
 		const dead = record({ submit_error: { message: "gone", at: 5 } });
 		await saveVisit(dead);
-		const { result } = await renderHook(() => useSubmit(dead, jest.fn()));
+		const { result } = await renderHook(() => useSubmit(dead, jest.fn()), { wrapper });
 
 		await act(async () => {
 			await result.current.submit();
@@ -180,11 +187,40 @@ describe("a permanent failure recorded on the record", () => {
 	});
 });
 
+describe("what a landed submit invalidates", () => {
+	test("the dashboard and the block's history, because both are now wrong", async () => {
+		// A check has moved on and a visit has appeared. Without this the agent
+		// walks back to a list still calling the job they just did overdue.
+		const spy = jest.spyOn(queries, "invalidateQueries");
+		const { result } = await mount();
+
+		await act(async () => {
+			await result.current.submit();
+		});
+
+		const keys = spy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
+		expect(keys).toContain(JSON.stringify(["dashboard"]));
+		expect(keys).toContain(JSON.stringify(["block-visits"]));
+	});
+
+	test("nothing, while it is still only queued", async () => {
+		syncEngine.setOnline(false);
+		const spy = jest.spyOn(queries, "invalidateQueries");
+		const { result } = await mount();
+
+		await act(async () => {
+			await result.current.submit();
+		});
+
+		expect(spy).not.toHaveBeenCalled();
+	});
+});
+
 describe("an already-submitted record", () => {
 	test("is reported as done without asking the server again", async () => {
 		const done = record({ submitted: { visit_id: "v9", logbook_pdf_url: "u", completed_at: "2026-08-14T00:00:00Z" } });
 		await saveVisit(done);
-		const { result } = await renderHook(() => useSubmit(done, jest.fn()));
+		const { result } = await renderHook(() => useSubmit(done, jest.fn()), { wrapper });
 
 		expect(result.current.submitted?.visit_id).toBe("v9");
 

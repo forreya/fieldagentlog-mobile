@@ -126,9 +126,21 @@ export function timeoutError(): ApiError {
 export function brokerMessage(body: unknown): string | null {
 	if (!body || typeof body !== "object") return null;
 	const b = body as { error?: unknown; message?: unknown };
-	if (typeof b.error === "string" && b.error.trim()) return b.error.trim();
-	if (typeof b.message === "string" && b.message.trim()) return b.message.trim();
-	return null;
+	return usable(b.error) ?? usable(b.message);
+}
+
+/**
+ * A server-supplied message, or null if it is not worth showing.
+ *
+ * Seen in the wild: a function's generic catch stringifies a thrown query error
+ * and sends `{"error":"[object Object]"}`. Rendering that verbatim is worse
+ * than our own generic line - it tells the reader nothing and looks broken.
+ */
+function usable(value: unknown): string | null {
+	if (typeof value !== "string") return null;
+	const text = value.trim();
+	if (!text || text === "[object Object]" || text === "undefined" || text === "null") return null;
+	return text;
 }
 
 /** Map a broker HTTP status to an error, preferring the server's own wording. */

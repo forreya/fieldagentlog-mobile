@@ -1,5 +1,7 @@
 import {
 	ApiError,
+	brokerMessage,
+	classifyBrokerStatus,
 	classifyStatus,
 	deadEndReasonFromStatus,
 	deadEndReasonFromVisitStatus,
@@ -100,5 +102,22 @@ describe("ApiError", () => {
 			expect(err.message).toMatch(/[a-z]/);
 			expect(err.message).not.toMatch(/undefined|\[object|Error:/);
 		}
+	});
+});
+
+describe("a server message that is not worth showing", () => {
+	test("a stringified object falls back to our own copy", () => {
+		// Real: field-agent's catch-all sends {"error":"[object Object]"} when a
+		// query throws. The block screen rendered it word for word.
+		expect(brokerMessage({ error: "[object Object]" })).toBeNull();
+		expect(classifyBrokerStatus(500, { error: "[object Object]" }).message).toBe("The server had a problem. Try again in a moment.");
+	});
+
+	test.each(["", "   ", "undefined", "null"])("%p is ignored too", (value) => {
+		expect(brokerMessage({ error: value })).toBeNull();
+	});
+
+	test("a real message still wins", () => {
+		expect(brokerMessage({ error: "You are not assigned to this block." })).toBe("You are not assigned to this block.");
 	});
 });

@@ -75,3 +75,16 @@ Worth knowing, because each one looks like an app bug:
   arrives with an empty checklist.
 - **`fire_visits.scope`** is added by the same cleaner migration and read on
   every packet request.
+- **`fire_visits.started_at`** is selected by `block-visits` and written by
+  `visit-submit`, but **no migration in balancebuddy-web creates it** - it
+  exists only in the live database, added out-of-repo. Rebuilding from
+  migrations gives a 500 on block-visits, which the function reports as
+  `{"error":"[object Object]"}`. Worth raising upstream.
+
+## What a full loop proves
+
+With the harness up, one submit through the real `visit-submit` shows the rules
+the app depends on actually holding: a passed check's `next_due_at` advances by
+its frequency, a failed one advances **and** opens a `fire_safety_defects` row,
+and an **N/A does not advance the cadence at all**. That last one is the
+invariant in CLAUDE.md, and it is worth re-proving whenever the backend moves.

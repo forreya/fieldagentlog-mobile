@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
@@ -63,7 +64,9 @@ function Body({ dashboard }: { dashboard: DashboardView }) {
 			{data.blocks.length === 0 ? (
 				<Note title="No blocks assigned" body="When a managing agent assigns you blocks, they'll appear here." />
 			) : (
-				data.blocks.map((block) => <BlockCard key={block.id} block={block} onOpen={() => undefined} />)
+				data.blocks.map((block) => (
+					<BlockCard key={block.id} block={block} onOpen={() => router.push({ pathname: "/(app)/block/[id]", params: { id: block.id } })} />
+				))
 			)}
 		</ScrollView>
 	);

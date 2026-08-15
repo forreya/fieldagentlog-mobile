@@ -10,6 +10,7 @@
 // `submit()` is awaiting its own pass it owns the phase, and only once it has
 // settled on `queued` does the engine subscription take over.
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { VisitRecord } from "@/db/types";
@@ -39,6 +40,7 @@ export interface Submission {
 
 export function useSubmit(record: VisitRecord, dispatch: (action: WizardAction) => void): Submission {
 	const { token } = record;
+	const queries = useQueryClient();
 	// A submit that died permanently is on the record, so reopening the visit
 	// after a restart explains itself instead of offering a button that will
 	// fail again silently.
@@ -64,6 +66,12 @@ export function useSubmit(record: VisitRecord, dispatch: (action: WizardAction) 
 		if (saved?.submitted) {
 			setSubmitted(saved.submitted);
 			advance({ kind: "idle" });
+			// The dashboard and this block's history are now both wrong: a check
+			// has moved on and a visit has appeared. Without this the agent walks
+			// back to a list still saying "overdue by 13 days" for something they
+			// just did, until the cache happens to go stale.
+			void queries.invalidateQueries({ queryKey: ["dashboard"] });
+			void queries.invalidateQueries({ queryKey: ["block-visits"] });
 			return true;
 		}
 		if (saved?.submit_error) {
@@ -71,7 +79,7 @@ export function useSubmit(record: VisitRecord, dispatch: (action: WizardAction) 
 			return true;
 		}
 		return false;
-	}, [token, advance]);
+	}, [token, advance, queries]);
 
 	useEffect(() => {
 		// Every completed pass is a chance the queued submit landed - including
