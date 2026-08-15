@@ -81,6 +81,13 @@ Worth knowing, because each one looks like an app bug:
   migrations gives a 500 on block-visits, which the function reports as
   `{"error":"[object Object]"}`. Worth raising upstream.
 
+- **No RLS on the prelude's tables.** The worst of the four, because it fails
+  _upwards_: with RLS off, every persona reads every row, so "staff read the
+  database directly under RLS" passes while proving nothing, and a real leak
+  would look fine. `0003_prelude_rls.sql` lifts the policies from
+  `0002_rls_base.sql`. With them on, a staff member sees their org's blocks and
+  an agent sees **zero** - which is the architecture's central claim.
+
 ## What a full loop proves
 
 With the harness up, one submit through the real `visit-submit` shows the rules

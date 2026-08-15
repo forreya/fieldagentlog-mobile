@@ -22,9 +22,9 @@ export default function SignedInHome() {
 	const { state, signOut } = useAuth();
 	const sync = useSyncStatus();
 	if (state.status !== "signed_in") return null;
-	// Agents first: they exercise the broker path, and staff (D6) is largely the
-	// same screens with a different data source.
-	if (state.role === "agent") return <AgentHome />;
+	// The same screen serves both: what differs is where the blocks come from,
+	// which useDashboard decides. Cleaners get their own flow in Milestone E.
+	if (state.role === "agent" || state.role === "staff") return <AgentHome />;
 
 	return (
 		<Screen

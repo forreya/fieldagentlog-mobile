@@ -11,9 +11,20 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { loadAgentDashboard } from "@/api/agent";
+import { loadStaffDashboard } from "@/api/staff";
+import { useAuth } from "@/auth/AuthProvider";
+import type { UserRole } from "@/auth/roles";
 import type { DashboardData } from "@/shared/fireData";
 
-export const DASHBOARD_KEY = ["dashboard", "agent"] as const;
+/** Keyed by persona: a staff member and an agent see different block sets, and
+ *  a shared cache key would hand one the other's list after a re-login. */
+export const dashboardKey = (role: UserRole) => ["dashboard", role] as const;
+
+/** Staff read the database directly under RLS; agents have no database access
+ *  at all and go through the broker. Same assembled shape either way. */
+function sourceFor(role: UserRole): () => Promise<DashboardData> {
+	return role === "staff" ? loadStaffDashboard : loadAgentDashboard;
+}
 
 export interface DashboardView {
 	data: DashboardData | null;
@@ -29,7 +40,13 @@ export interface DashboardView {
 }
 
 export function useDashboard(): DashboardView {
-	const query = useQuery({ queryKey: DASHBOARD_KEY, queryFn: loadAgentDashboard });
+	const { state } = useAuth();
+	// Cleaners never see this screen; the guard sends them elsewhere. Defaulting
+	// to the broker is the safer of the two - it can only ever return blocks the
+	// caller is actually assigned.
+	const role: UserRole = state.status === "signed_in" ? state.role : "agent";
+
+	const query = useQuery({ queryKey: dashboardKey(role), queryFn: sourceFor(role) });
 
 	return {
 		data: query.data ?? null,

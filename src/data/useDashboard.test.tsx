@@ -9,13 +9,22 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 import * as agentApi from "@/api/agent";
+import * as staffApi from "@/api/staff";
 import { ApiError } from "@/api/errors";
 import type { DashboardData } from "@/shared/fireData";
 
 import { freshnessLabel, useDashboard } from "./useDashboard";
 
 jest.mock("@/api/agent");
+jest.mock("@/api/staff");
+
+const mockRole = { current: "agent" as "agent" | "staff" };
+jest.mock("@/auth/AuthProvider", () => ({
+	useAuth: () => ({ state: { status: "signed_in", user: { id: "u1" }, role: mockRole.current } }),
+}));
+
 const api = agentApi as jest.Mocked<typeof agentApi>;
+const staff = staffApi as jest.Mocked<typeof staffApi>;
 
 const data: DashboardData = {
 	blocks: [
@@ -43,7 +52,10 @@ function wrapper() {
 	return { client, Wrapper };
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+	jest.clearAllMocks();
+	mockRole.current = "agent";
+});
 
 test("says it is loading before anything has arrived", async () => {
 	api.loadAgentDashboard.mockReturnValue(new Promise(() => undefined));
@@ -100,6 +112,43 @@ test("a non-Error rejection still says something useful", async () => {
 	const { result } = await renderHook(() => useDashboard(), { wrapper: Wrapper });
 
 	await waitFor(() => expect(result.current.error).toBe("Something went wrong loading your blocks."));
+});
+
+describe("which source a persona reads from", () => {
+	test("an agent goes through the broker - they have no database access", async () => {
+		api.loadAgentDashboard.mockResolvedValue(data);
+		const { Wrapper } = wrapper();
+
+		const { result } = await renderHook(() => useDashboard(), { wrapper: Wrapper });
+
+		await waitFor(() => expect(result.current.data).toEqual(data));
+		expect(api.loadAgentDashboard).toHaveBeenCalled();
+		expect(staff.loadStaffDashboard).not.toHaveBeenCalled();
+	});
+
+	test("a staff member reads the database directly under RLS", async () => {
+		mockRole.current = "staff";
+		staff.loadStaffDashboard.mockResolvedValue(data);
+		const { Wrapper } = wrapper();
+
+		const { result } = await renderHook(() => useDashboard(), { wrapper: Wrapper });
+
+		await waitFor(() => expect(result.current.data).toEqual(data));
+		expect(staff.loadStaffDashboard).toHaveBeenCalled();
+		expect(api.loadAgentDashboard).not.toHaveBeenCalled();
+	});
+
+	test("the two personas do not share a cache entry", async () => {
+		// A shared key would hand one persona the other's block list after a
+		// re-login on the same phone.
+		const { client, Wrapper } = wrapper();
+		api.loadAgentDashboard.mockResolvedValue(data);
+		const { result } = await renderHook(() => useDashboard(), { wrapper: Wrapper });
+		await waitFor(() => expect(result.current.data).toEqual(data));
+
+		expect(client.getQueryData(["dashboard", "agent"])).toEqual(data);
+		expect(client.getQueryData(["dashboard", "staff"])).toBeUndefined();
+	});
 });
 
 describe("freshnessLabel", () => {

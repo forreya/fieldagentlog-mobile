@@ -3,6 +3,8 @@ import { useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { agentStartVisit } from "@/api/agent";
+import { staffStartVisit } from "@/api/staff";
+import { useAuth } from "@/auth/AuthProvider";
 import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
 import { StatusPill } from "@/components/StatusPill";
@@ -49,6 +51,7 @@ export function BlockDetail({ blockId }: { blockId: string }) {
 
 function Detail({ block, dashboard }: { block: BlockWithJobs; dashboard: DashboardView }) {
 	const sync = useSyncStatus();
+	const { state } = useAuth();
 	const history = useBlockVisits(block.id);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -61,7 +64,12 @@ function Detail({ block, dashboard }: { block: BlockWithJobs; dashboard: Dashboa
 		setBusy(true);
 		setError(null);
 		try {
-			const token = await agentStartVisit(block.id);
+			// Staff self-dispatch straight into the table under RLS; an agent has
+			// no database access and asks the broker to mint it for them.
+			const token =
+				state.status === "signed_in" && state.role === "staff"
+					? await staffStartVisit(state.user, { id: block.id, organizationId: block.organizationId })
+					: await agentStartVisit(block.id);
 			// Replaced, not pushed: the checklist is the task now, and Back from
 			// it should return to this block rather than to a stale mid-visit.
 			router.replace({ pathname: "/v/[token]", params: { token } });

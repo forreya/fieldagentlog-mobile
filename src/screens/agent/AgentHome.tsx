@@ -14,8 +14,12 @@ import { useSyncStatus } from "@/sync/useSyncStatus";
 import { colors, fonts, space } from "@/theme/tokens";
 
 /**
- * The external agent's home: only the blocks assigned to them, read through the
- * field-agent broker because they have no database access at all.
+ * The blocks home, for both signed-in personas that have one.
+ *
+ * An agent sees only the blocks assigned to them, read through the field-agent
+ * broker because they have no database access at all. A staff member sees their
+ * organisation's blocks, read directly under RLS. Same screen either way - the
+ * source is chosen in useDashboard, not here.
  *
  * Cached data is shown rather than a spinner whenever there is any, with a
  * stamp saying how old it is. Someone standing outside a building wants
@@ -26,17 +30,19 @@ export function AgentHome() {
 	const sync = useSyncStatus();
 	const dashboard = useDashboard();
 	const email = state.status === "signed_in" ? (state.user.email ?? undefined) : undefined;
+	// An agent is sent to specific blocks; a staff member owns a portfolio.
+	const staff = state.status === "signed_in" && state.role === "staff";
 
 	return (
 		<Screen
-			title="Your visits"
+			title={staff ? "Your blocks" : "Your visits"}
 			sub="Fire-safety checks"
 			action={<StatusPill {...sync} />}
 			signedInAs={email}
 			scroll={false}
 			footer={<Button label="Sign out" variant="ghostDark" block onPress={() => void signOut()} />}
 		>
-			<Body dashboard={dashboard} />
+			<Body dashboard={dashboard} staff={staff} />
 		</Screen>
 	);
 }
@@ -44,7 +50,7 @@ export function AgentHome() {
 /** Stable empty list, so the finder does not re-run while the blocks load. */
 const NO_BLOCKS: BlockWithJobs[] = [];
 
-function Body({ dashboard }: { dashboard: DashboardView }) {
+function Body({ dashboard, staff }: { dashboard: DashboardView; staff: boolean }) {
 	const { data, loading, refreshing, error, updatedAt, refresh } = dashboard;
 	const find = useFind(data?.blocks ?? NO_BLOCKS);
 
@@ -69,7 +75,14 @@ function Body({ dashboard }: { dashboard: DashboardView }) {
 			<Summary dashboard={dashboard} showStamp={!error} />
 			{error ? <Stale message={error} updatedAt={updatedAt} /> : null}
 			{data.blocks.length === 0 ? (
-				<Note title="No blocks assigned" body="When a managing agent assigns you blocks, they'll appear here." />
+				<Note
+					title={staff ? "No blocks yet" : "No blocks assigned"}
+					body={
+						staff
+							? "Blocks added in BalanceBuddy appear here once they have fire checks set up."
+							: "When a managing agent assigns you blocks, they'll appear here."
+					}
+				/>
 			) : (
 				<>
 					{/* Only worth the space once there is a list to search. */}

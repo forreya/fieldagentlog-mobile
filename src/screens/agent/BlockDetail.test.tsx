@@ -14,6 +14,12 @@ import { BlockDetail } from "./BlockDetail";
 
 jest.mock("expo-router", () => ({ router: { back: jest.fn(), push: jest.fn(), replace: jest.fn() } }));
 jest.mock("@/api/agent");
+jest.mock("@/api/staff");
+
+const mockRole = { current: "agent" as "agent" | "staff" };
+jest.mock("@/auth/AuthProvider", () => ({
+	useAuth: () => ({ state: { status: "signed_in", user: { id: "u1", email: "sam@company.co.uk" }, role: mockRole.current } }),
+}));
 jest.mock("@/sync/useSyncStatus", () => ({ useSyncStatus: () => ({ online: true, syncing: false, pending: 0 }) }));
 
 const mockDashboard = { current: {} as DashboardView };
@@ -55,7 +61,10 @@ async function show(over: Partial<DashboardView> = {}, history: Partial<VisitHis
 	await render(<BlockDetail blockId="b1" />);
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+	jest.clearAllMocks();
+	mockRole.current = "agent";
+});
 
 test("splits what is due from what is not", async () => {
 	await show();
