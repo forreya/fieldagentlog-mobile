@@ -35,9 +35,15 @@ export default function Index() {
 			<Link href="/about" style={styles.link}>
 				About this app
 			</Link>
-			<Link href="/gallery" style={styles.link}>
-				Component gallery
-			</Link>
+			{/* A styling workbench, not a feature. The route still exists in a
+			    release build - it is harmless and reachable by URL if it is ever
+			    needed - but an inspector opening a visit link should never be
+			    offered it. */}
+			{__DEV__ ? (
+				<Link href="/gallery" style={styles.link}>
+					Component gallery
+				</Link>
+			) : null}
 			<Link href="/diagnostics" style={styles.link}>
 				Diagnostics
 			</Link>
