@@ -52,18 +52,12 @@ eas credentials    # iOS: distribution cert + provisioning profile; Android: upl
 
 ## Stage 2 - Store records (one-time)
 
-**Apple** - App Store Connect > Apps > **+**:
+See **`store-setup.md`** - the click-through for both consoles, the declarations, and the listing
+assets. Two things from it are worth knowing before you get there:
 
-- Team: Gena Property Management Limited, Team ID `HQ57RV6WZK` (so the `apple-app-site-association`
-  appID at phase G4 is `HQ57RV6WZK.com.fieldagentlog.app`).
-- Name `FieldAgentLog` · Bundle ID `com.fieldagentlog.app` · SKU `fieldagentlog` · Language en-GB.
-- If the bundle ID isn't listed, create it first under Certificates, IDs & Profiles > Identifiers.
-
-**Google** - Play Console > **Create app**:
-
-- Name `FieldAgentLog` · Package `com.fieldagentlog.app` · App (not game) · Free.
-- Accept **Play App Signing**. Copy the **app signing** SHA-256 (not the upload key) - it goes in
-  the website's `assetlinks.json` at phase G4.
+- The `apple-app-site-association` appID at phase G4 is `HQ57RV6WZK.com.fieldagentlog.app` (Team ID
+  `HQ57RV6WZK`, Gena Property Management Limited).
+- `assetlinks.json` needs Play's **app signing** SHA-256, never the upload key's.
 
 ## Stage 3 - First build onto a device
 
@@ -96,25 +90,8 @@ Do not submit a shell. Apple guideline 4.2 (minimum functionality) rejects thin 
 rejection sits on the account's record. Earliest defensible submission is a working inspection
 wizard; the planned v1.0 is full web parity (plan Milestones A-F + H1/H2/H5).
 
-**Assets needed** (both stores):
-
-- Icon 1024x1024, no alpha, no rounded corners.
-- Screenshots: iPhone 6.7" **and** 6.5"; Android phone (min 2, 1080p+).
-- Play only: feature graphic 1024x500, short description (80 chars), full description (4000).
-- Privacy policy URL (stage 0).
-
-**Declarations** - answer honestly, they are audited:
-
-- Apple **App Privacy**: Location (precise, app functionality, linked to user), Photos, Email,
-  Identifiers. Not used for tracking.
-- Play **Data safety**: same list, encrypted in transit, users can request deletion.
-- Apple **Export compliance**: `ITSAppUsesNonExemptEncryption: false` is already set in
-  `app.json` (HTTPS only).
-- Play **Content rating** questionnaire, **Target audience** (18+, business use).
-
-**Review account** - both stores need working credentials. Provide a cleaner login and, in the
-review notes, a live `/v/<token>` visit link plus a line explaining that inspectors use one-time
-links rather than accounts. Without that, a reviewer sees a login wall and rejects it.
+Listing assets, the privacy declarations and the reviewer-account note are all in
+**`store-setup.md`**. Bump `version` in `app.json` to `1.0.0` first.
 
 Then: App Store Connect > add build > release notes > **Submit for review** · Play Console >
 Production > create release > roll out.
