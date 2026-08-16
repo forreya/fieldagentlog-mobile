@@ -87,7 +87,9 @@ If the name is taken, App Store Connect says so here. The display name under the
 
 ## 3. App Information
 
-- **Subtitle** (30 chars): something like `Fire-safety checks on site`.
+- **Subtitle** (30 chars): `On-site checks and reports`. Avoid a fire-only subtitle - attendance
+  and site reports are not fire work, and a cleaner clocking in would read it as the wrong app.
+  "fire safety" belongs in the keywords field, which is what search indexes.
 - **Category**: Business, secondary Utilities.
 - **Content rights**: does not contain third-party content.
 - **Age rating**: run the questionnaire. Every answer is None/No, giving 4+.
