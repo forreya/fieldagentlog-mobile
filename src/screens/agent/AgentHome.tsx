@@ -4,8 +4,9 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native
 import { useAuth } from "@/auth/AuthProvider";
 import { BlockCard } from "@/components/BlockCard";
 import { FindBar } from "@/components/FindBar";
+import { Note } from "@/components/Note";
 import { Button } from "@/components/Button";
-import { Card, Screen } from "@/components/Screen";
+import { Screen } from "@/components/Screen";
 import { StatusPill } from "@/components/StatusPill";
 import { useFind } from "@/data/useFind";
 import { freshnessLabel, useDashboard, type DashboardView } from "@/data/useDashboard";
@@ -40,7 +41,12 @@ export function AgentHome() {
 			action={<StatusPill {...sync} />}
 			signedInAs={email}
 			scroll={false}
-			footer={<Button label="Sign out" variant="ghostDark" block onPress={() => void signOut()} />}
+			footer={
+				<>
+					<Button label="Sign out" variant="ghostDark" onPress={() => void signOut()} />
+					{staff ? <Button label="Plan visits" onPress={() => router.push("/(app)/plan")} style={styles.grow} /> : null}
+				</>
+			}
 		>
 			<Body dashboard={dashboard} staff={staff} />
 		</Screen>
@@ -141,17 +147,8 @@ function Stale({ message, updatedAt }: { message: string; updatedAt: number | nu
 	);
 }
 
-function Note({ title, body, children }: { title: string; body: string; children?: React.ReactNode }) {
-	return (
-		<Card>
-			<Text style={styles.noteTitle}>{title}</Text>
-			<Text style={styles.noteBody}>{body}</Text>
-			{children}
-		</Card>
-	);
-}
-
 const styles = StyleSheet.create({
+	grow: { flex: 1 },
 	list: { gap: space.s3, paddingBottom: space.s6 },
 	summary: { gap: 2 },
 	counts: { fontFamily: fonts.body, fontSize: 15, color: colors.plateInk },
@@ -161,6 +158,4 @@ const styles = StyleSheet.create({
 	stale: { backgroundColor: colors.naTint, borderLeftWidth: 4, borderLeftColor: colors.sevMedium, borderRadius: 8, padding: space.s3, gap: 2 },
 	staleTitle: { fontFamily: fonts.displayHeavy, fontSize: 15, color: colors.plateInk },
 	staleBody: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.plateInk },
-	noteTitle: { fontFamily: fonts.displayHeavy, fontSize: 18, color: colors.plateInk },
-	noteBody: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: colors.plateMuted },
 });

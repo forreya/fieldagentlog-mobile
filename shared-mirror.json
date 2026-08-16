@@ -21,6 +21,8 @@
 		"//": "Ported by hand and allowed to diverge, decided 2026-08-15. Unlike src/shared, none of this is a compliance surface: two clients ordering a list differently is cosmetic, not a wrong answer about whether a check is overdue. Mirroring it would need a refactor in ../fieldagent (its nearby.ts reaches a localStorage-backed geocode cache), which is that repo's call to make.",
 		"src/lib/nearby.ts": "Search matching, distance sorting and distance formatting. Close port of the web app's src/lib/nearby.ts, minus its `locate` (which is platform-bound).",
 		"src/lib/geo.ts": "haversineKm, verbatim from the web app's cluster.ts.",
-		"src/lib/geocode.ts": "postcodes.io lookup. Same protocol, different cache: AsyncStorage here, localStorage there."
+		"src/lib/geocode.ts": "postcodes.io lookup. Same protocol, different cache: AsyncStorage here, localStorage there.",
+		"src/lib/cluster.ts": "Greedy clustering + nearest-neighbour route order, ported from the web's cluster.ts. Same maths; haversineKm imported from geo.ts here instead of being defined inline.",
+		"src/lib/plan.ts": "The assembly half of the web's usePlan hook, extracted to a pure module so it tests without React. Same rounds given the same blocks."
 	}
 }
