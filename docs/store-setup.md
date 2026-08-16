@@ -34,12 +34,35 @@ None of these are console work, and all three stop a submission dead:
 
 # Part 1 - App Store Connect
 
-## 1. Check the identifier
+## 1. Check the identifier and its Associated Domains capability
 
-Developer portal > **Certificates, IDs & Profiles > Identifiers** > `com.fieldagentlog.app`.
-EAS made it, so it exists; confirm **Associated Domains** is ticked. Without it the
-`https://fieldagentlog.com/v/...` visit links open Safari instead of the app (the rest of that job
-is phase G4).
+The identifier exists - EAS registered it - but **Associated Domains was not on it as of the last
+iOS build**, because app links were added to `app.json` two days after that build was made. Without
+that capability the `https://fieldagentlog.com/v/...` visit links open Safari instead of the app
+(the website half of the job is phase G4).
+
+EAS syncs capabilities from the entitlements on every build, so the next iOS build should enable it
+with nothing clicked. Verify rather than assume, either way:
+
+**In the browser.** developer.apple.com > Account > **Certificates, Identifiers & Profiles** >
+**Identifiers** > `com.fieldagentlog.app` > find **Associated Domains** in the capability list.
+Note this is developer.apple.com, not App Store Connect - same login, different site. Ticking it by
+hand invalidates existing provisioning profiles; that is harmless here, because EAS regenerates them
+on the next build.
+
+**From the artifact**, which is what the device actually enforces. Download any finished iOS build
+and read the profile it was signed with:
+
+```bash
+eas build:list --platform ios --limit 1 --json --non-interactive | \
+  python3 -c "import json,sys;print(json.load(sys.stdin)[0]['artifacts']['buildUrl'])" | \
+  xargs curl -sL -o /tmp/fal.ipa && unzip -oq /tmp/fal.ipa -d /tmp/fal && \
+  security cms -D -i /tmp/fal/Payload/*.app/embedded.mobileprovision > /tmp/fal.plist && \
+  /usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.developer.associated-domains" /tmp/fal.plist
+```
+
+`applinks:fieldagentlog.com` means it is on. "Does Not Exist" means it is not, and the links will
+open Safari no matter what the website serves.
 
 ## 2. Create the app record
 
