@@ -6,7 +6,22 @@ than terminal work.
 
 ## What is already done
 
-Checked 2026-08-16, so don't redo these:
+**Both store records now exist (2026-08-16) and `1.0.0 (3)` is on TestFlight and Play's internal
+track.** Parts 1 and 2 below are kept as the record of what was set and why - reread them when
+filling in the production declarations, not to redo the setup.
+
+| Settled            | Value                                                           |
+| ------------------ | --------------------------------------------------------------- |
+| ASC App ID         | `6802039027` (pinned in `eas.json` so submits don't prompt)     |
+| Apple team         | `HQ57RV6WZK`, Gena Property Management Limited                  |
+| Associated Domains | Enabled. The signed binary carries `applinks:fieldagentlog.com` |
+| Play app           | `com.fieldagentlog.app`, Play App Signing accepted              |
+| Version convention | `1.0.x`, patch bumped by hand per release                       |
+
+Still outstanding: the privacy policy URL, the Play service account, listing assets, and the
+production declarations. Everything else here is history.
+
+The pre-existing state, checked the same day:
 
 | Thing                           | State                                                                                                                                                               |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -17,8 +32,8 @@ Checked 2026-08-16, so don't redo these:
 | iOS signing + identifier        | Exist. A device build signed for `com.fieldagentlog.app` finished on 12 Aug, which is only possible if EAS registered the identifier and minted a distribution cert |
 | Android upload keystore         | EAS-managed, created with the first Android build                                                                                                                   |
 
-So both stores need an **app record**, and Play additionally needs a **service account** before
-`eas submit` works. Neither exists yet.
+Play still needs a **service account** before `eas submit` will work for Android; until then its
+uploads go through the console by hand.
 
 ## The three blockers we own
 
@@ -36,13 +51,12 @@ None of these are console work, and all three stop a submission dead:
 
 ## 1. Check the identifier and its Associated Domains capability
 
-The identifier exists - EAS registered it - but **Associated Domains was not on it as of the last
-iOS build**, because app links were added to `app.json` two days after that build was made. Without
-that capability the `https://fieldagentlog.com/v/...` visit links open Safari instead of the app
-(the website half of the job is phase G4).
+**Resolved 2026-08-16: Associated Domains is on**, and the signed binary carries
+`applinks:fieldagentlog.com`. EAS synced the capability itself during the first App Store build -
+nothing had to be clicked. The remaining half of app links is the website serving
+`apple-app-site-association`, which is phase G4; until then the visit links open Safari.
 
-EAS syncs capabilities from the entitlements on every build, so the next iOS build should enable it
-with nothing clicked. Verify rather than assume, either way:
+Kept because it is the check to run whenever links stop opening the app:
 
 **In the browser.** developer.apple.com > Account > **Certificates, Identifiers & Profiles** >
 **Identifiers** > `com.fieldagentlog.app` > find **Associated Domains** in the capability list.
@@ -214,15 +228,17 @@ updates are usually much quicker.
 
 ---
 
-# Order to do it in
+# What is left
 
-1. **Privacy policy** on fieldagentlog.com - the only item with a dependency on someone else's
-   deploy, so start it.
-2. **Both app records** (parts 1.2 and 2.1) - 20 minutes each, and they unblock everything.
-3. **Play service account** - fiddly, and unrelated to anything else, so get it out of the way.
-4. **Declarations and listings** - answerable now, no build required.
-5. **Screenshots** - once the UI is final, i.e. after Milestone F.
-6. **Submit** - not before Milestone F. Apple guideline 4.2 rejects thin apps and a rejection stays
+Both app records are done (2026-08-16). In order:
+
+1. **Privacy policy** on fieldagentlog.com - `public/privacy.html` in the `fieldagent` repo. Blocks
+   the production track on both stores, though not the internal ones.
+2. **Play service account** - fiddly, unrelated to anything else, and the only thing standing
+   between you and `eas submit --platform android`.
+3. **Declarations and listings** - answerable now, no build required.
+4. **Screenshots** - once the UI is final, i.e. after Milestone F.
+5. **Submit** - not before Milestone F. Apple guideline 4.2 rejects thin apps and a rejection stays
    on the account's record; the earliest defensible submission is the full inspection wizard plus
    the cleaner and site-report flows.
 
