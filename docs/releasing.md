@@ -91,7 +91,7 @@ rejection sits on the account's record. Earliest defensible submission is a work
 wizard; the planned v1.0 is full web parity (plan Milestones A-F + H1/H2/H5).
 
 Listing assets, the privacy declarations and the reviewer-account note are all in
-**`store-setup.md`**. Bump `version` in `app.json` to `1.0.0` first.
+**`store-setup.md`**.
 
 Then: App Store Connect > add build > release notes > **Submit for review** · Play Console >
 Production > create release > roll out.

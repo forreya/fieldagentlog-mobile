@@ -226,5 +226,7 @@ updates are usually much quicker.
    on the account's record; the earliest defensible submission is the full inspection wizard plus
    the cleaner and site-report flows.
 
-One version note: `app.json` still says `0.1.0`. Bump it to `1.0.0` for the public release. Build
-numbers are automatic (`appVersionSource: remote`), so that string is the only thing to set by hand.
+**Version numbers** follow Gena Go: `1.0.x`, the patch bumped by hand in `app.json` per release,
+starting at `1.0.0`. Build numbers are not - they stay automatic here (`appVersionSource: remote`),
+which is a deliberate divergence from Gena Go's hand-bumped `versionCode`. See the table at the top
+of `releasing.md`.
