@@ -64,6 +64,11 @@ eas build:list --platform ios --limit 1 --json --non-interactive | \
 `applinks:fieldagentlog.com` means it is on. "Does Not Exist" means it is not, and the links will
 open Safari no matter what the website serves.
 
+Associated Domains is the only capability the app needs today. **Push Notifications** joins it at
+phase G2, together with an APNs key made through `eas credentials` so EAS holds it. Camera, photos
+and location need nothing here - they are Info.plist usage strings, already written by the config
+plugins in `app.json`. Don't tick anything the app does not use; App Review asks about extras.
+
 ## 2. Create the app record
 
 App Store Connect > **Apps > + > New App**:
