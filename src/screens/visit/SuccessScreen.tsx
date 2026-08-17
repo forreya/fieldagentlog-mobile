@@ -1,6 +1,8 @@
+import { router } from "expo-router";
 import { useState } from "react";
 import { Linking, StyleSheet, Text } from "react-native";
 
+import { useAuth } from "@/auth/AuthProvider";
 import { Button } from "@/components/Button";
 import { StatusScreen } from "@/components/StatusScreen";
 import type { VisitRecord } from "@/db/types";
@@ -15,12 +17,19 @@ type Submitted = NonNullable<VisitRecord["submitted"]>;
  * the visit is locked server-side the moment it is accepted. Reopening the same
  * link later lands on this same screen from the cached record.
  *
+ * Terminal for the *visit*, though - not for the person. An external inspector
+ * came from a link and has nowhere else to be, but someone signed in started
+ * this from their own block list and has more to do. They get a way back; the
+ * inspector does not, because for them it would lead to a sign-in wall.
+ *
  * The logbook opens in the system browser rather than in the app. It is a
  * signed URL to a PDF that people forward, print and file, and every phone
  * already has a viewer that can do all three.
  */
 export function SuccessScreen({ blockName, submitted }: { blockName?: string; submitted: Submitted }) {
 	const [failed, setFailed] = useState(false);
+	const { state } = useAuth();
+	const signedIn = state.status === "signed_in";
 
 	async function openLogbook() {
 		try {
@@ -43,6 +52,11 @@ export function SuccessScreen({ blockName, submitted }: { blockName?: string; su
 				<Text style={styles.note}>The logbook PDF will be available shortly.</Text>
 			)}
 			{failed ? <Text style={styles.note}>The logbook wouldn&apos;t open on this phone. The inspection itself is safely recorded.</Text> : null}
+			{/* Replace, not push: the finished visit should not sit under the list
+			    waiting to be swiped back into. */}
+			{/* ghostDark, not ghost: StatusScreen is a dark plate, and the light
+			    variant renders near-black text on it. */}
+			{signedIn ? <Button label="Back to your blocks" variant="ghostDark" block onPress={() => router.replace("/(app)")} /> : null}
 			<Text style={styles.note}>This visit is now locked.</Text>
 		</StatusScreen>
 	);

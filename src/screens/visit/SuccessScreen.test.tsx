@@ -1,11 +1,23 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { router } from "expo-router";
 import { Linking } from "react-native";
 
 import { SuccessScreen } from "./SuccessScreen";
 
+jest.mock("expo-router", () => ({ router: { replace: jest.fn(), push: jest.fn(), back: jest.fn() } }));
+
+const mockSignedIn = { current: false };
+jest.mock("@/auth/AuthProvider", () => ({
+	useAuth: () => ({ state: mockSignedIn.current ? { status: "signed_in", user: { id: "u1" }, role: "agent" } : { status: "signed_out" } }),
+}));
+
 const submitted = { visit_id: "v1", logbook_pdf_url: "https://example.test/logbook.pdf", completed_at: "2026-08-14T10:00:00Z" };
 
-beforeEach(() => jest.restoreAllMocks());
+beforeEach(() => {
+	jest.restoreAllMocks();
+	jest.clearAllMocks();
+	mockSignedIn.current = false;
+});
 
 test("names the block and says the visit is locked", async () => {
 	await render(<SuccessScreen blockName="Elm Court" submitted={submitted} />);
@@ -39,4 +51,25 @@ test("no PDF yet is a wait, not a failure - the inspection is already in", async
 
 	expect(screen.getByText("The logbook PDF will be available shortly.")).toBeTruthy();
 	expect(screen.queryByRole("button", { name: "Open the logbook (PDF)" })).toBeNull();
+});
+
+describe("who gets a way out", () => {
+	test("an external inspector does not - the link is the whole journey", async () => {
+		// Offering "your blocks" to someone with no account leads to a sign-in
+		// wall, which is a worse dead end than the one it replaced.
+		await render(<SuccessScreen blockName="Elm Court" submitted={submitted} />);
+
+		expect(screen.queryByRole("button", { name: "Back to your blocks" })).toBeNull();
+	});
+
+	test("a signed-in agent does - they started from their own list and have more to do", async () => {
+		mockSignedIn.current = true;
+		await render(<SuccessScreen blockName="Elm Court" submitted={submitted} />);
+
+		fireEvent.press(screen.getByRole("button", { name: "Back to your blocks" }));
+
+		// Replace: a finished visit should not sit under the list waiting to be
+		// swiped back into.
+		expect(router.replace).toHaveBeenCalledWith("/(app)");
+	});
 });

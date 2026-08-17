@@ -59,3 +59,33 @@ sweep deleted the queued photos of any visit that had not been reopened.
 
 That last one cannot be done in Expo Go at all - the JS bundle comes from Metro over the network -
 so it needs an installed build. Verified on the Android preview build, 2026-08-14.
+
+## D - The signed-in app
+
+Two personas share these screens, so run the list twice: once as an agent, once as staff. What
+differs is where the blocks come from, and that is exactly what breaks.
+
+- [ ] Sign in with a bad password: refused with a readable message, not a raw error.
+- [ ] Sign in as an **agent**: only assigned blocks appear, read through the broker.
+- [ ] Sign in as **staff**: the organisation's blocks appear, read directly under RLS.
+- [ ] The summary line counts blocks, jobs due and overdue, and is stamped with its age.
+- [ ] Pull to refresh updates the stamp; killing the network mid-refresh keeps the list and says so.
+- [ ] Cold start offline: yesterday's list is there with an honest "Updated ... ago", not a spinner.
+- [ ] Open a block: due now, not due yet, and past visits all render; a failed history load is a
+      line of text, never a blocked screen.
+- [ ] **Start checklist** mints a token and opens the wizard - as an agent (broker) and as staff
+      (self-dispatch under RLS). Both land in the same wizard.
+- [ ] Submitting from there returns to a list that has **updated**: the check just done is no longer
+      overdue. Stale caches after a submit were a real bug.
+- [ ] Search by name, address and postcode filters the list; junk says "Nothing matches that".
+- [ ] **Nearest**: the location prompt appears only on tapping it, never on launch. Denying it shows
+      a message with a way out, and tapping again after granting in Settings works.
+- [ ] Sign out returns to the landing screen and leaves any queued work alone.
+
+### Staff only
+
+- [ ] **Plan visits** groups nearby blocks into rounds, numbered in drive order, with a distance.
+- [ ] A block whose postcode will not geocode is listed under "Location unknown", not dropped.
+- [ ] An agent who reaches /plan is told it is a staff tool rather than shown an empty screen.
+- [ ] A block moving from due-soon to overdue re-plans on the next refresh (the cache key includes
+      urgency, deliberately unlike the web app).
