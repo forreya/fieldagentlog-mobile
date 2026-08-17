@@ -5,7 +5,9 @@
 -- of a real block's fire logbook. Everything is named "ZZ REVIEW" so it sorts
 -- last and nobody mistakes it for a client.
 --
--- Run it in the Supabase SQL editor for project etkiptvblskvyfzdbsic.
+-- Run it in the Supabase SQL editor for project etkiptvblskvyfzdbsic. Dry-run against a
+-- local copy of the schema on 2026-08-17: 3 blocks, 6 checks, 3 assignments, and
+-- clean on a second run.
 -- Idempotent: re-running resets the due dates and changes nothing else.
 --
 -- BEFORE RUNNING: create the auth user first, in Authentication > Users > Add
@@ -17,13 +19,9 @@
 BEGIN;
 
 -- Fixed ids so re-running is an update rather than a second copy.
-WITH org AS (
-  INSERT INTO public.organizations (id, name, slug)
-  VALUES ('dddddddd-0000-4000-8000-000000000001', 'ZZ REVIEW - store review sandbox', 'zz-review-sandbox')
-  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
-  RETURNING id
-)
-SELECT id FROM org;
+INSERT INTO public.organizations (id, name, slug)
+VALUES ('dddddddd-0000-4000-8000-000000000001', 'ZZ REVIEW - store review sandbox', 'zz-review-sandbox')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 
 INSERT INTO public.blocks (id, organization_id, name, address, postcode) VALUES
   ('dddddddd-0000-4000-8000-00000000b001', 'dddddddd-0000-4000-8000-000000000001',
