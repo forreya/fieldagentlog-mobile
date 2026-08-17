@@ -1,30 +1,32 @@
-// The signed-in home. A placeholder on purpose: D3 replaces it with the real
-// dashboard, and D1 only needs somewhere the guard can legitimately land.
+// Which home a signed-in person lands on.
+//
+// Every persona now has one, so this is a router rather than a screen. The
+// fallback below is not dead code: `role_unknown` is a real state (the claim
+// could not be read and the lookup has not returned), and a role we do not
+// recognise is possible the day BalanceBuddy adds a fourth. Neither should show
+// a blank page.
 
 import { router } from "expo-router";
 import { StyleSheet, Text } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
-import { BlocksHome } from "@/screens/blocks/BlocksHome";
 import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
 import { StatusPill } from "@/components/StatusPill";
+import { BlocksHome } from "@/screens/blocks/BlocksHome";
+import { CleanerHome } from "@/screens/cleaner/CleanerHome";
 import { useSyncStatus } from "@/sync/useSyncStatus";
 import { colors, fonts } from "@/theme/tokens";
-
-const WHAT_IS_COMING: Record<string, string> = {
-	staff: "Your blocks, the checks due on them, and planning a round of visits.",
-	agent: "The blocks assigned to you and the checks due on each one.",
-	cleaner: "Checking in and out of a site, your duties, and reporting an issue.",
-};
 
 export function SignedInHome() {
 	const { state, signOut } = useAuth();
 	const sync = useSyncStatus();
 	if (state.status !== "signed_in") return null;
-	// The same screen serves both: what differs is where the blocks come from,
-	// which useDashboard decides. Cleaners get their own flow in Milestone E.
+
+	// Staff and agents share a screen - what differs is where the blocks come
+	// from, which useDashboard decides. A cleaner's list is sites, not blocks.
 	if (state.role === "agent" || state.role === "staff") return <BlocksHome />;
+	if (state.role === "cleaner") return <CleanerHome />;
 
 	return (
 		<Screen
@@ -35,8 +37,10 @@ export function SignedInHome() {
 			footer={<Button label="Sign out" variant="ghostDark" block onPress={() => void signOut()} />}
 		>
 			<Card>
-				<Text style={styles.h}>Nothing here yet</Text>
-				<Text style={styles.p}>{WHAT_IS_COMING[state.role]} It arrives in the next build.</Text>
+				<Text style={styles.h}>We can&apos;t tell what you do here</Text>
+				<Text style={styles.p}>
+					Your account signed in, but it isn&apos;t set up as staff, a field agent or a cleaner. Your managing agent can put that right.
+				</Text>
 			</Card>
 			<Card>
 				<Text style={styles.h}>About this app</Text>

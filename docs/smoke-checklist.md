@@ -82,6 +82,10 @@ differs is where the blocks come from, and that is exactly what breaks.
 - [ ] **Nearest**: the location prompt appears only on tapping it, never on launch. Denying it shows
       a message with a way out, and tapping again after granting in Settings works.
 - [ ] Sign out returns to the landing screen and leaves any queued work alone.
+- [ ] **Sign straight back in, without restarting the app.** Not the same test as
+      signing in after a cold start, and it shipped broken: the client was rebuilt on sign-out while
+      the auth listener still watched the old one, so the second sign-in returned 200 and the form
+      just sat there. Restarting between personas hides it, which is why three smoke runs missed it.
 
 ### Staff only
 
@@ -90,3 +94,11 @@ differs is where the blocks come from, and that is exactly what breaks.
 - [ ] An agent who reaches /plan is told it is a staff tool rather than shown an empty screen.
 - [ ] A block moving from due-soon to overdue re-plans on the next refresh (the cache key includes
       urgency, deliberately unlike the web app).
+
+## E - The cleaner
+
+- [ ] Sign in as a cleaner: the site list appears, not the blocks dashboard.
+- [ ] Only the sites the cleaner's **company** is assigned to. Assignment is company-wide, not per
+      person, so a second cleaner at the same company sees the same list.
+- [ ] A site with fire checks due carries a count; one with none carries no badge at all.
+- [ ] The summary totals the duties across sites, and says "1 site"/"1 fire check" in the singular.

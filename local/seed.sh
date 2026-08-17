@@ -4,8 +4,10 @@
 # Two accounts, because the whole point of the D-milestone screens is that two
 # personas share them and read from different sources:
 #
-#   staff@example.test  / staffpass123   org member, reads PostgREST under RLS
-#   agent@example.test  / fieldagent123  no org membership, broker only
+#   staff@example.test    / staffpass123   org member, reads PostgREST under RLS
+#   agent@example.test    / fieldagent123  no org membership, broker only
+#   cleaner@example.test  / cleanerpass123 app_metadata.role=cleaner, broker only,
+#                                          scoped by their company's assignments
 #
 # Four blocks: three in London a few km apart so Plan visits produces a real
 # round, and one in Manchester so there is a second round to separate it from.
@@ -34,7 +36,14 @@ VALUES
   ('22222222-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000',
    'authenticated','authenticated','agent@example.test',
    crypt('fieldagent123', gen_salt('bf')), now(), now(), now(),
-   '{"provider":"email","providers":["email"]}'::jsonb, '{"name":"Alex Agent"}'::jsonb)
+   '{"provider":"email","providers":["email"]}'::jsonb, '{"name":"Alex Agent"}'::jsonb),
+  -- The cleaner claim lives in app_metadata, which only the server can set. The
+  -- broker refuses every cleaner action without it, and the app reads it to
+  -- decide the persona without a round trip.
+  ('22222222-0000-4000-8000-000000000003','00000000-0000-0000-0000-000000000000',
+   'authenticated','authenticated','cleaner@example.test',
+   crypt('cleanerpass123', gen_salt('bf')), now(), now(), now(),
+   '{"provider":"email","providers":["email"],"role":"cleaner"}'::jsonb, '{"name":"Casey Cleaner"}'::jsonb)
 ON CONFLICT (id) DO UPDATE SET encrypted_password = EXCLUDED.encrypted_password;
 
 -- GoTrue scans these into non-nullable Go strings. Left NULL, every sign-in
@@ -50,13 +59,13 @@ SET confirmation_token = COALESCE(confirmation_token, ''),
     phone_change = COALESCE(phone_change, ''),
     phone_change_token = COALESCE(phone_change_token, ''),
     reauthentication_token = COALESCE(reauthentication_token, '')
-WHERE email IN ('staff@example.test','agent@example.test');
+WHERE email IN ('staff@example.test','agent@example.test','cleaner@example.test');
 
 INSERT INTO auth.identities (id, user_id, provider_id, provider, identity_data,
                              created_at, updated_at, last_sign_in_at)
 SELECT u.id, u.id, u.id::text, 'email',
        jsonb_build_object('sub', u.id::text, 'email', u.email), now(), now(), now()
-FROM auth.users u WHERE u.email IN ('staff@example.test','agent@example.test')
+FROM auth.users u WHERE u.email IN ('staff@example.test','agent@example.test','cleaner@example.test')
 ON CONFLICT (provider_id, provider) DO NOTHING;
 SQL
 
@@ -108,12 +117,38 @@ VALUES
 ON CONFLICT (block_id, agent_user_id) DO NOTHING;
 SQL
 
+# A cleaning company covering two of the four blocks, and one cleaner in it.
+# Assignment is company-wide, not per-cleaner: that is how BalanceBuddy models it,
+# and getting it wrong here would hide a whole class of scoping bug.
+"${PSQL[@]}" <<SQL
+INSERT INTO public.cleaning_companies (id, organization_id, name, contact_email)
+VALUES ('44444444-0000-4000-8000-00000000c001', '$ORG', 'Example Cleaning Co', 'ops@example.test')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+INSERT INTO public.cleaners (id, organization_id, company_id, user_id, email, display_name, active)
+VALUES ('44444444-0000-4000-8000-0000000000c1', '$ORG', '44444444-0000-4000-8000-00000000c001',
+        '22222222-0000-4000-8000-000000000003', 'cleaner@example.test', 'Casey Cleaner', true)
+ON CONFLICT (id) DO UPDATE SET active = true, display_name = EXCLUDED.display_name;
+
+INSERT INTO public.cleaner_block_assignments (organization_id, block_id, company_id) VALUES
+  ('$ORG','33333333-0000-4000-8000-00000000b001','44444444-0000-4000-8000-00000000c001'),
+  ('$ORG','33333333-0000-4000-8000-00000000b003','44444444-0000-4000-8000-00000000c001')
+ON CONFLICT DO NOTHING;
+
+-- Only some checks are a cleaner's job. duties_due counts exactly these, so
+-- leaving them all false would render a correct-looking list of empty badges.
+UPDATE public.block_fire_checks SET cleaner_assignable = true
+WHERE catalogue_code IN ('FA_WEEKLY','HOUSEKEEPING','EL_MONTHLY');
+SQL
+
 "${PSQL[@]}" -c "
 SELECT (SELECT count(*) FROM public.blocks)                   AS blocks,
        (SELECT count(*) FROM public.block_fire_checks)        AS checks,
        (SELECT count(*) FROM public.field_agent_assignments)  AS agent_blocks,
-       (SELECT count(*) FROM auth.users)                      AS accounts;"
+       (SELECT count(*) FROM auth.users)                      AS accounts,
+       (SELECT count(*) FROM public.cleaner_block_assignments) AS cleaner_sites;"
 
 echo
 echo "staff@example.test / staffpass123   (4 blocks, RLS)"
 echo "agent@example.test / fieldagent123  (2 blocks, broker)"
+echo "cleaner@example.test / cleanerpass123 (2 sites, cleaner broker)"

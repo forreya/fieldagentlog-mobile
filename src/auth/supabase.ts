@@ -52,7 +52,7 @@ export function getSupabase(): SupabaseClient {
 	return client;
 }
 
-/** Test seam, and used at sign-out to drop the cached client. */
+/** Test seam only. Sign-out deliberately does NOT call this - see endSession. */
 export function resetSupabase(): void {
 	client = null;
 }

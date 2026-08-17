@@ -17,7 +17,7 @@ import { signInMessage } from "./messages";
 
 import { forgetRole, recallRole, rememberRole } from "./roleCache";
 import type { UserRole } from "./roles";
-import { getSupabase, resetSupabase, resolveUserRole, supabaseConfigured } from "./supabase";
+import { getSupabase, resolveUserRole, supabaseConfigured } from "./supabase";
 
 export type AuthState =
 	/** Still restoring a stored session. Show nothing that depends on the answer. */
@@ -83,9 +83,15 @@ export async function endSession(): Promise<void> {
 		// either way, which is what signing out means here.
 	}
 	await forgetRole();
-	// Drop the cached client so the next sign-in builds a fresh one. The offline
-	// queues are untouched on purpose.
-	resetSupabase();
+	// The client deliberately OUTLIVES the sign-out. AuthProvider subscribes to
+	// onAuthStateChange once, on the instance it captured at mount; dropping the
+	// cached client here meant the next sign-in built a second instance and
+	// signed in on that, while the listener still watched the first. Auth
+	// returned 200, no event ever arrived, and the app sat on the sign-in form
+	// with no error - only an app restart cleared it.
+	//
+	// signOut() has already emptied the session, so there is nothing stale to
+	// throw away. The offline queues are untouched on purpose.
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
