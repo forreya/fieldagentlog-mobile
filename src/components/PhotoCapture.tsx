@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { CheckResult } from "@/db/types";
 import { colors, fonts, radii, space, TAP } from "@/theme/tokens";
@@ -49,11 +49,16 @@ export function PhotoCapture({ token, checkId, result, onCaptured, onCleared }: 
 	}
 
 	function choose() {
-		Alert.alert("Add a photo", undefined, [
-			{ text: "Take a photo", onPress: () => void add("camera") },
-			{ text: "Choose from library", onPress: () => void add("library") },
-			{ text: "Cancel", style: "cancel" },
-		]);
+		const camera = { text: "Take a photo", onPress: () => void add("camera") };
+		const library = { text: "Choose from library", onPress: () => void add("library") };
+		const cancel = { text: "Cancel", style: "cancel" as const };
+		// Android maps a three-button alert to slots by index, not by style:
+		// [0] is the neutral button on the left, [2] the emphasised one on the
+		// right. In iOS order that puts Cancel under the thumb of anyone who taps
+		// the right-hand button by habit, so Android gets its own order with the
+		// camera - the thing an inspector standing at a fault actually wants - in
+		// the emphasised slot. iOS honours `style: "cancel"` and needs no help.
+		Alert.alert("Add a photo", undefined, Platform.OS === "android" ? [cancel, library, camera] : [camera, library, cancel]);
 	}
 
 	if (busy) return <Busy />;

@@ -7,7 +7,7 @@ import { render, screen } from "@testing-library/react-native";
 import type { DashboardView } from "@/data/useDashboard";
 import type { BlockWithJobs, DashboardData } from "@/shared/fireData";
 
-import { AgentHome } from "./AgentHome";
+import { BlocksHome } from "./BlocksHome";
 
 const mockView = { current: {} as DashboardView };
 
@@ -40,7 +40,7 @@ const data = (blocks: BlockWithJobs[]): DashboardData => ({
 
 async function show(view: Partial<DashboardView>) {
 	mockView.current = { data: null, loading: false, refreshing: false, error: null, updatedAt: null, refresh: jest.fn(), ...view };
-	await render(<AgentHome />);
+	await render(<BlocksHome />);
 }
 
 test("a first load says so rather than showing an empty list", async () => {

@@ -2,7 +2,7 @@
 
 import { useLocalSearchParams } from "expo-router";
 
-import { BlockDetail } from "@/screens/agent/BlockDetail";
+import { BlockDetail } from "@/screens/blocks/BlockDetail";
 
 export default function BlockRoute() {
 	const { id } = useLocalSearchParams<{ id: string }>();

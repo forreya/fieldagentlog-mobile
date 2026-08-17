@@ -26,7 +26,7 @@ import { colors, fonts, space } from "@/theme/tokens";
  * stamp saying how old it is. Someone standing outside a building wants
  * yesterday's list and the truth about its age, not an empty screen.
  */
-export function AgentHome() {
+export function BlocksHome() {
 	const { state, signOut } = useAuth();
 	const sync = useSyncStatus();
 	const dashboard = useDashboard();
