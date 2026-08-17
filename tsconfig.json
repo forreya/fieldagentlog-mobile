@@ -8,5 +8,9 @@
 			"@/assets/*": ["./assets/*"]
 		}
 	},
-	"include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
+	"include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+	// local/stack is a generated Supabase project: BalanceBuddy's Edge Functions
+	// copied in to run against. They are Deno, typechecked by their own repo, and
+	// nothing here imports them.
+	"exclude": ["node_modules", "local/stack"]
 }
