@@ -5,11 +5,12 @@ every release. One line per scenario; each milestone appends its own. A failure 
 
 Boxes stay **unticked**: this is a template to re-run, not a record. Log each run below.
 
-| Run            | Platforms                  | Result                                                                         |
-| -------------- | -------------------------- | ------------------------------------------------------------------------------ |
-| B7, 2026-08-13 | Android emulator + iOS sim | A and B pass; offline/online transition verified live                          |
-| C7, 2026-08-14 | Android emulator + iOS sim | A-C pass. Found two cold-start bugs and one poisoned-queue bug; all fixed here |
-| D1, 2026-08-14 | Android preview APK        | Offline cold start passes on an installed build; env reached the bundle        |
+| Run            | Platforms                  | Result                                                                                                                                                                                                                                                                                               |
+| -------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B7, 2026-08-13 | Android emulator + iOS sim | A and B pass; offline/online transition verified live                                                                                                                                                                                                                                                |
+| C7, 2026-08-14 | Android emulator + iOS sim | A-C pass. Found two cold-start bugs and one poisoned-queue bug; all fixed here                                                                                                                                                                                                                       |
+| D1, 2026-08-14 | Android preview APK        | Offline cold start passes on an installed build; env reached the bundle                                                                                                                                                                                                                              |
+| D8, 2026-08-17 | iOS sim + Android emulator | A-D pass. Found a dead end on the submitted screen for signed-in users, and an illegible button when fixing it. Verified live: agent sees 2 blocks vs staff 4, broker and self-dispatch both mint tokens, submit advances cadences with N/A correctly not advancing, and the list updates in-session |
 
 ## A - Foundations
 

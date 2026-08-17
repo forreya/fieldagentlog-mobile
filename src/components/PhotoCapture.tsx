@@ -53,11 +53,12 @@ export function PhotoCapture({ token, checkId, result, onCaptured, onCleared }: 
 		const library = { text: "Choose from library", onPress: () => void add("library") };
 		const cancel = { text: "Cancel", style: "cancel" as const };
 		// Android maps a three-button alert to slots by index, not by style:
-		// [0] is the neutral button on the left, [2] the emphasised one on the
-		// right. In iOS order that puts Cancel under the thumb of anyone who taps
-		// the right-hand button by habit, so Android gets its own order with the
-		// camera - the thing an inspector standing at a fault actually wants - in
-		// the emphasised slot. iOS honours `style: "cancel"` and needs no help.
+		// [0] is the neutral slot and [2] the emphasised one. Where those land
+		// depends on the layout - a row when the labels are short, stacked when
+		// they are not - so the fix is the order, not a position. In iOS order
+		// Cancel takes the emphasised slot; here the camera does, which is what
+		// an inspector standing at a fault actually wants. iOS honours
+		// `style: "cancel"` and needs no help.
 		Alert.alert("Add a photo", undefined, Platform.OS === "android" ? [cancel, library, camera] : [camera, library, cancel]);
 	}
 
