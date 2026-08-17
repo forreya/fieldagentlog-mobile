@@ -2,14 +2,17 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native
 
 import type { CleanerSite } from "@/api/cleaner";
 import { useAuth } from "@/auth/AuthProvider";
+import { Banner } from "@/components/Banner";
 import { Button } from "@/components/Button";
 import { FindBar } from "@/components/FindBar";
 import { Note } from "@/components/Note";
+import { OnSiteCard, formatDuration } from "@/components/OnSiteCard";
 import { Screen } from "@/components/Screen";
 import { SiteCard } from "@/components/SiteCard";
 import { StatusPill } from "@/components/StatusPill";
 import { freshnessLabel } from "@/data/useDashboard";
 import { useFind } from "@/data/useFind";
+import { useAttendance, type AttendanceView } from "@/cleaner/useAttendance";
 import { useSites, type SitesView } from "@/data/useSites";
 import { useSyncStatus } from "@/sync/useSyncStatus";
 import { colors, fonts, space } from "@/theme/tokens";
@@ -24,15 +27,15 @@ import { colors, fonts, space } from "@/theme/tokens";
  * sites rather than work, and the duty count is a footnote on each rather than
  * the headline.
  *
- * Checking in, the duties themselves and reporting an issue arrive in E2 and
- * E3. Until then a site opens nothing, which is why the cards do not pretend to
- * be links to somewhere.
+ * Tapping a site checks in there. The duties themselves and reporting an issue
+ * arrive in E3.
  */
 export function CleanerHome() {
 	const { state, signOut } = useAuth();
 	const sync = useSyncStatus();
 	const sites = useSites();
 	const email = state.status === "signed_in" ? (state.user.email ?? undefined) : undefined;
+	const attendance = useAttendance(email ?? null);
 
 	return (
 		<Screen
@@ -43,7 +46,7 @@ export function CleanerHome() {
 			scroll={false}
 			footer={<Button label="Sign out" variant="ghostDark" block onPress={() => void signOut()} />}
 		>
-			<Body sites={sites} />
+			<Body sites={sites} attendance={attendance} />
 		</Screen>
 	);
 }
@@ -51,7 +54,7 @@ export function CleanerHome() {
 /** Stable empty list, so the finder does not re-run while the sites load. */
 const NO_SITES: CleanerSite[] = [];
 
-function Body({ sites }: { sites: SitesView }) {
+function Body({ sites, attendance }: { sites: SitesView; attendance: AttendanceView }) {
 	const { sites: data, loading, refreshing, error, updatedAt, refresh } = sites;
 	const find = useFind(data ?? NO_SITES);
 
@@ -76,6 +79,9 @@ function Body({ sites }: { sites: SitesView }) {
 			<Summary sites={data} showStamp={!error} updatedAt={updatedAt} />
 			{error ? <Stale message={error} updatedAt={updatedAt} /> : null}
 
+			<AttendanceBanners attendance={attendance} />
+			{attendance.active ? <OnSiteCard session={attendance.active} busy={attendance.busy} onCheckOut={() => void attendance.checkOut()} /> : null}
+
 			{data.length === 0 ? (
 				<Note
 					title="No sites yet"
@@ -96,11 +102,41 @@ function Body({ sites }: { sites: SitesView }) {
 					{find.results.length === 0 ? (
 						<Note title="Nothing matches that" body="Try part of the name, the street or the postcode." />
 					) : (
-						find.results.map((site) => <SiteCard key={site.id} site={site} distanceKm={find.distances.get(site.id)} onOpen={() => undefined} />)
+						find.results.map((site) => (
+							<SiteCard
+								key={site.id}
+								site={site}
+								distanceKm={find.distances.get(site.id)}
+								// One site at a time. Checking in somewhere else while
+								// already on site would leave two open sessions and no
+								// honest answer for where the person actually was.
+								disabled={attendance.active !== null || attendance.busy}
+								onOpen={() => void attendance.checkIn(site.id, site.name)}
+							/>
+						))
 					)}
 				</>
 			)}
 		</ScrollView>
+	);
+}
+
+/** What just happened: a fix that failed, or a visit that closed. */
+function AttendanceBanners({ attendance }: { attendance: AttendanceView }) {
+	const closed = attendance.justClosed;
+	return (
+		<>
+			{attendance.error ? <Banner tone="bad" text={attendance.error} onDismiss={attendance.dismissError} /> : null}
+			{closed ? (
+				<Banner
+					tone="ok"
+					text={`Checked out of ${closed.site_name} - ${formatDuration(
+						Math.round(((closed.check_out?.at ?? 0) - closed.check_in.at) / 1000),
+					)} on site.${closed.synced_out ? "" : " It goes up when you have signal."}`}
+					onDismiss={attendance.dismissClosed}
+				/>
+			) : null}
+		</>
 	);
 }
 

@@ -13,8 +13,8 @@
 // with its own listeners. A mock that returned a single shared object would
 // pass whether or not the bug was present.
 
-import { act, render, screen, waitFor } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Pressable, Text } from "react-native";
 
 import { AuthProvider, useAuth } from "./AuthProvider";
 import { resetSupabase } from "./supabase";
@@ -81,17 +81,21 @@ jest.mock("./roleCache", () => ({
 
 jest.mock("@/api/session", () => ({ onSessionExpired: () => () => undefined }));
 
-const probe: { signIn: () => Promise<unknown>; signOut: () => Promise<void> } = {
-	signIn: async () => undefined,
-	signOut: async () => undefined,
-};
-
+// Buttons rather than captured callbacks: assigning to a module-level object
+// during render is a mutation the React Compiler rightly refuses.
 function Probe() {
 	const { state, signIn, signOut } = useAuth();
-	probe.signIn = () => signIn("cleaner@example.test", "pw");
-	probe.signOut = signOut;
-	return <Text>{state.status === "signed_in" ? `in:${state.role}` : state.status}</Text>;
+	return (
+		<>
+			<Text>{state.status === "signed_in" ? `in:${state.role}` : state.status}</Text>
+			<Pressable accessibilityRole="button" accessibilityLabel="do-sign-in" onPress={() => void signIn("cleaner@example.test", "pw")} />
+			<Pressable accessibilityRole="button" accessibilityLabel="do-sign-out" onPress={() => void signOut()} />
+		</>
+	);
 }
+
+const pressSignIn = () => fireEvent.press(screen.getByLabelText("do-sign-in"));
+const pressSignOut = () => fireEvent.press(screen.getByLabelText("do-sign-out"));
 
 beforeEach(() => {
 	mockState.client = makeClient();
@@ -111,20 +115,21 @@ async function mount() {
 test("signing in, out, and in again all land on a signed-in state", async () => {
 	await mount();
 
-	await act(async () => void (await probe.signIn()));
+	pressSignIn();
 	await waitFor(() => expect(screen.getByText("in:cleaner")).toBeTruthy());
 
-	await act(async () => void (await probe.signOut()));
+	pressSignOut();
 	await waitFor(() => expect(screen.getByText("signed_out")).toBeTruthy());
 
 	// The one that regressed.
-	await act(async () => void (await probe.signIn()));
+	pressSignIn();
 	await waitFor(() => expect(screen.getByText("in:cleaner")).toBeTruthy());
 });
 
 test("sign-out leaves the client in place, so the listener stays attached", async () => {
 	await mount();
-	await act(async () => void (await probe.signOut()));
+	pressSignOut();
+	await waitFor(() => expect(screen.getByText("signed_out")).toBeTruthy());
 
 	expect(mockState.built).toBe(1);
 	expect(mockState.subscribeCount).toBe(1);

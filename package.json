@@ -2,6 +2,9 @@
 	"name": "fieldagentlog-mobile",
 	"main": "expo-router/entry",
 	"version": "0.1.0",
+	"engines": {
+		"node": ">=22"
+	},
 	"dependencies": {
 		"@expo-google-fonts/archivo": "^0.4.2",
 		"@expo-google-fonts/ibm-plex-mono": "^0.4.1",

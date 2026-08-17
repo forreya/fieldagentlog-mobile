@@ -12,16 +12,29 @@ import { colors, fonts, radii, space, TAP } from "@/theme/tokens";
  * else's responsibility, and showing them would imply otherwise. The only
  * number here is the one they are accountable for.
  */
-export function SiteCard({ site, onOpen, distanceKm }: { site: CleanerSite; onOpen: () => void; distanceKm?: number }) {
+export function SiteCard({
+	site,
+	onOpen,
+	distanceKm,
+	disabled,
+}: {
+	site: CleanerSite;
+	onOpen: () => void;
+	distanceKm?: number;
+	/** Greyed while a session is open elsewhere: one site at a time. */
+	disabled?: boolean;
+}) {
 	const duties = site.duties_due;
 	const dutyText = duties === 0 ? "no checks due" : `${duties} fire check${duties === 1 ? "" : "s"} due`;
 
 	return (
 		<Pressable
 			accessibilityRole="button"
+			accessibilityState={{ disabled: Boolean(disabled) }}
 			accessibilityLabel={`${site.name}. ${dutyText}${distanceKm === undefined ? "" : `. ${formatDistance(distanceKm)} away`}`}
+			disabled={disabled}
 			onPress={onOpen}
-			style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+			style={({ pressed }) => [styles.card, disabled && styles.disabled, pressed && !disabled && styles.pressed]}
 		>
 			<View style={styles.head}>
 				<View style={styles.id}>
@@ -55,6 +68,7 @@ const styles = StyleSheet.create({
 		minHeight: TAP,
 	},
 	pressed: { transform: [{ scale: 0.995 }], borderColor: colors.plateEdgeStrong },
+	disabled: { opacity: 0.5 },
 	head: { flexDirection: "row", alignItems: "flex-start", gap: space.s3 },
 	id: { flex: 1, gap: 2 },
 	name: { fontFamily: fonts.displayHeavy, fontSize: 18, color: colors.plateInk },

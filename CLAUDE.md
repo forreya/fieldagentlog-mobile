@@ -28,7 +28,7 @@ BalanceBuddy Edge Functions (`../../balancebuddy-web/supabase/functions/`) and a
 - N/A verdicts don't advance a check's cadence (server rule - don't imply otherwise in UI).
 - Never reload/update the app mid-visit; updates apply on cold start only.
 
-## Two rules that have already been broken more than once
+## Rules that have already been broken here
 
 - **After ANY dependency change: `npm run lock:linux`, same commit.** `npm install` on macOS
   writes a lockfile `npm ci` on Linux rejects, and CI and EAS both run `npm ci` on Linux. Broken
@@ -36,6 +36,10 @@ BalanceBuddy Edge Functions (`../../balancebuddy-web/supabase/functions/`) and a
 - **"Green" means a fresh clone passed on Linux**, not that it passed here. Read the _suite_
   count, not just the test count - a suite that fails to load still prints `Tests: N passed`.
   Twice a narrow grep hid a real failure.
+- **Node 22 or newer** (`.nvmrc` says 24). The db tests import `node:sqlite`, a built-in that does
+  not exist before 22. On Node 20 nine suites fail to LOAD while the run still prints
+  `Tests: 508 passed, 0 failed` - the exact shape the rule above warns about. A machine restart
+  reset nvm to 20 and produced it for real.
 
 ## Commits
 

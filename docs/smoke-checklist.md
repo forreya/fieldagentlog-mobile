@@ -102,3 +102,18 @@ differs is where the blocks come from, and that is exactly what breaks.
       person, so a second cleaner at the same company sees the same list.
 - [ ] A site with fire checks due carries a count; one with none carries no badge at all.
 - [ ] The summary totals the duties across sites, and says "1 site"/"1 fire check" in the singular.
+
+### Attendance
+
+The reason the app exists, for a cleaner. Do the offline half on a real airplane mode.
+
+- [ ] Checking in asks for location **at that moment** - never on launch, never on sign-in.
+- [ ] Refusing the permission stops the check-in and says how to turn it on. No half-record.
+- [ ] The timer starts the instant you tap, without waiting for the network.
+- [ ] The card reads "Saved on this phone" until the check-in lands, then stops saying it **by
+      itself** - no pull-to-refresh, no reopening the screen.
+- [ ] While on site, every site card is greyed: one open session at a time.
+- [ ] **Check in with no signal**, then restore it: the queue sends the check-in on its own.
+- [ ] Force-stop while on site and relaunch: the timer is still running, from the right time.
+- [ ] Check out: the banner's duration matches what the server stored, not what the phone counted.
+- [ ] Check out with no signal: the banner says it goes up when there is signal, and it does.

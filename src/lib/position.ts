@@ -11,6 +11,8 @@
 
 import * as Location from "expo-location";
 
+import type { GeoPoint } from "@/db/types";
+
 import type { LatLng } from "./geo";
 
 /** Long enough for a cold GPS fix outdoors, short enough not to feel broken. */
@@ -53,11 +55,76 @@ export async function capturePosition(): Promise<PositionOutcome> {
 }
 
 /** Indoors, a fix can simply never arrive; waiting forever is not an answer. */
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms: number, error?: Error): Promise<T> {
 	return Promise.race([
 		promise,
-		new Promise<T>((_resolve, reject) => setTimeout(() => reject(new Error("Location is taking too long. Try again outside.")), ms)),
+		new Promise<T>((_resolve, reject) => setTimeout(() => reject(error ?? new Error("Location is taking too long. Try again outside.")), ms)),
 	]);
+}
+
+// ── The check-in fix ────────────────────────────────────────────────────────
+//
+// A different job from sorting by distance, and deliberately a different
+// function rather than a flag on the one above.
+//
+//   - High accuracy, because this is evidence of where somebody was. Sorting a
+//     list tolerates a few hundred metres; an attendance record does not.
+//   - It returns the accuracy radius, which the broker requires and rejects the
+//     whole payload without.
+//   - No cached fix. A check-in stamped with a position from the last site is
+//     worse than no check-in at all.
+//
+// Copy ported from the web's `lib/geo.ts`, changed only where it named the
+// browser: a cleaner on a phone has Settings, not browser settings.
+
+/** Long enough for a cold high-accuracy fix, short enough not to feel broken. */
+const FIX_TIMEOUT_MS = 15_000;
+
+export type FixOutcome =
+	{ status: "ok"; fix: GeoPoint } | { status: "denied" } | { status: "unavailable" } | { status: "timeout" } | { status: "failed"; message: string };
+
+export async function captureFix(): Promise<FixOutcome> {
+	try {
+		if (!(await Location.hasServicesEnabledAsync())) return { status: "unavailable" };
+
+		const { granted } = await Location.requestForegroundPermissionsAsync();
+		if (!granted) return { status: "denied" };
+
+		const position = await withTimeout(Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }), FIX_TIMEOUT_MS, new TimeoutError());
+		return {
+			status: "ok",
+			fix: {
+				lat: position.coords.latitude,
+				lng: position.coords.longitude,
+				// Android can report a null accuracy. The broker rejects a payload
+				// without a finite one, so an honest large radius beats losing the
+				// check-in over a missing field.
+				accuracy: Number.isFinite(position.coords.accuracy) ? (position.coords.accuracy as number) : 9999,
+				at: position.timestamp || Date.now(),
+			},
+		};
+	} catch (err) {
+		if (err instanceof TimeoutError) return { status: "timeout" };
+		return { status: "failed", message: err instanceof Error ? err.message : "Couldn't get your location." };
+	}
+}
+
+class TimeoutError extends Error {}
+
+/** What to tell a cleaner standing at a door when the fix does not come. */
+export function fixMessage(outcome: FixOutcome): string | null {
+	switch (outcome.status) {
+		case "ok":
+			return null;
+		case "denied":
+			return "Location is blocked. Turn on location for this app in Settings, then try again.";
+		case "unavailable":
+			return "Location services are switched off on this phone. Turn them on, then try again.";
+		case "timeout":
+			return "Getting your location took too long - try again.";
+		case "failed":
+			return outcome.message;
+	}
 }
 
 /** Plain-English copy for each way a fix can fail. */
