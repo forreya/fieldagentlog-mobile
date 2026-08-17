@@ -95,3 +95,39 @@ the app depends on actually holding: a passed check's `next_due_at` advances by
 its frequency, a failed one advances **and** opens a `fire_safety_defects` row,
 and an **N/A does not advance the cadence at all**. That last one is the
 invariant in CLAUDE.md, and it is worth re-proving whenever the backend moves.
+
+## Rebuilding it (2026-08-17)
+
+The first version of this harness lived in a temp directory and did not survive
+a reboot: the containers came back, the project directory did not, and the edge
+runtime was dead with its source gone. It is now a script in the repo.
+
+```bash
+./local/setup.sh            # copy migrations, start, seed
+./local/setup.sh --reset    # wipe and re-seed
+```
+
+`local/setup.sh` owns everything. It copies real migrations out of
+`balancebuddy-web` at run time, adds two small local files, and clears the
+migrations directory first so nothing can accumulate unnoticed.
+
+What changed in the rebuild, and why it matters:
+
+- **The base tables are now production's own `0001_init` and `0002_rls_base`**,
+  not a hand-written prelude. The old prelude's `organizations` had no `slug`,
+  which is NOT NULL UNIQUE in production - a local test could pass where
+  production would fail. Only `work_orders` is still stubbed, purely as an FK
+  target for `0182` (`local/stubs.sql` says why).
+- **`0006` and `0045` are in the set** because the broker selects
+  `address_line_1/town/postcode` and filters `deleted_at`. Without them its
+  blocks query fails while the checks query succeeds, so the dashboard shows no
+  blocks and reports no error. That is a very quiet way to lose an afternoon.
+- **`0219` is in the set**, for `fire_visits.scope` and
+  `block_fire_checks.cleaner_assignable`. Milestone E needs it anyway.
+- **The seed blanks eight `auth.users` token columns.** GoTrue scans them into
+  non-nullable Go strings, so a NULL there makes every sign-in fail with a 500
+  "Database error querying schema" while the row looks perfect in psql.
+
+Verified after the rebuild: both accounts sign in, staff reads four blocks
+through PostgREST under RLS, the agent reads zero directly and exactly their two
+through the broker.
