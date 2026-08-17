@@ -1,4 +1,8 @@
+import { router } from "expo-router";
+
 import type { DeadEndReason } from "@/api/errors";
+import { useAuth } from "@/auth/AuthProvider";
+import { Button } from "@/components/Button";
 import { StatusScreen } from "@/components/StatusScreen";
 
 /**
@@ -33,6 +37,18 @@ const COPY: Record<DeadEndReason, { title: string; body: string }> = {
 };
 
 export function DeadEndScreen({ reason }: { reason: DeadEndReason }) {
+	const { state } = useAuth();
 	const { title, body } = COPY[reason] ?? COPY.unknown;
-	return <StatusScreen tone="bad" title={title} body={body} />;
+
+	// Still no retry, for the reason above. But the "nowhere else to be"
+	// assumption only held while every visitor arrived by link. Since D3 a
+	// signed-in agent can reach this from Start checklist, and stranding them on
+	// a screen with no navigation is a different failure from a spent link.
+	const signedIn = state.status === "signed_in" || state.status === "role_unknown";
+
+	return (
+		<StatusScreen tone="bad" title={title} body={body}>
+			{signedIn ? <Button label="Back to your blocks" block onPress={() => router.replace("/(app)")} /> : null}
+		</StatusScreen>
+	);
 }

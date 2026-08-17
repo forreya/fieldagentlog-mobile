@@ -31,6 +31,11 @@ STACK="$HERE/stack"
 #              filters on deleted_at; without them its blocks query fails and
 #              returns an empty list while the checks come back fine, so the
 #              dashboard shows "no blocks" with no error anywhere.
+#   0095/0096/ the building-profile columns in BLOCK_COLUMNS: height, storeys,
+#   0115      evacuation policy, firefighting and evacuation lifts. visit-packet
+#              selects all of them in one go, so a single missing column makes
+#              the whole packet 500 with "Block not found" - which reads as bad
+#              data rather than a missing migration.
 #   0178-0182  the fire-safety tables under test
 #   0219       cleaner attendance: adds fire_visits.scope and the
 #              block_fire_checks.cleaner_assignable that visit-packet selects
@@ -40,6 +45,9 @@ MIGRATIONS=(
   0002_rls_base
   0006_block_soft_delete
   0045_blocks_structured_address
+  0095_blocks_building_height
+  0096_blocks_fire_evacuation_policy
+  0115_blocks_kbi
   0178_block_fire_profile
   0179_fire_check_catalogue
   0180_block_fire_checks

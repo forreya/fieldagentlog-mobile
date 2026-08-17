@@ -70,13 +70,21 @@ INSERT INTO public.organization_members (organization_id, user_id, role)
 VALUES ('$ORG', '22222222-0000-4000-8000-000000000001', 'owner')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO public.blocks (id, organization_id, name, address, postcode) VALUES
-  ('33333333-0000-4000-8000-00000000b001','$ORG','Elm Court',   '1 Elm Road, London',    'SE1 7PB'),
-  ('33333333-0000-4000-8000-00000000b002','$ORG','Cedar Point', '3 Cedar Way, London',   'SE15 5DT'),
-  ('33333333-0000-4000-8000-00000000b003','$ORG','Beech House', '22 Beech Lane, London', 'SE5 9QQ'),
-  ('33333333-0000-4000-8000-00000000b004','$ORG','Oak Rise',    '40 Oak Street, Manchester', 'M14 5GT')
+-- The structured columns matter, not just `address`. blockAddress() composes
+-- from address_line_1 / address_town / address_postcode and only falls back to
+-- the freetext `address` when all three are empty - so a fixture that sets only
+-- `address` and `postcode` renders a bare postcode and quietly tests a path
+-- production never takes.
+INSERT INTO public.blocks
+  (id, organization_id, name, address, postcode, address_line_1, address_town, address_postcode) VALUES
+  ('33333333-0000-4000-8000-00000000b001','$ORG','Elm Court',   '1 Elm Road, London',        'SE1 7PB',  '1 Elm Road',    'London',     'SE1 7PB'),
+  ('33333333-0000-4000-8000-00000000b002','$ORG','Cedar Point', '3 Cedar Way, London',       'SE15 5DT', '3 Cedar Way',   'London',     'SE15 5DT'),
+  ('33333333-0000-4000-8000-00000000b003','$ORG','Beech House', '22 Beech Lane, London',     'SE5 9QQ',  '22 Beech Lane', 'London',     'SE5 9QQ'),
+  ('33333333-0000-4000-8000-00000000b004','$ORG','Oak Rise',    '40 Oak Street, Manchester', 'M14 5GT',  '40 Oak Street', 'Manchester', 'M14 5GT')
 ON CONFLICT (id) DO UPDATE
-  SET name = EXCLUDED.name, address = EXCLUDED.address, postcode = EXCLUDED.postcode;
+  SET name = EXCLUDED.name, address = EXCLUDED.address, postcode = EXCLUDED.postcode,
+      address_line_1 = EXCLUDED.address_line_1, address_town = EXCLUDED.address_town,
+      address_postcode = EXCLUDED.address_postcode;
 
 -- A spread of states so no screen renders a uniform list.
 INSERT INTO public.block_fire_checks
