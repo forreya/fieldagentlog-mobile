@@ -75,3 +75,33 @@ SELECT
 --    WHERE block_id IN (SELECT id FROM public.blocks
 --                        WHERE organization_id = 'dddddddd-0000-4000-8000-000000000001');
 --   then re-run this script to reset the due dates.
+
+
+-- ── Verifying what the reviewer will actually see ────────────────────────────
+--
+-- Stronger than opening the app and looking: this proves the SCOPE, not just
+-- what rendered. Run it on its own any time you want to re-check.
+
+-- 1. The blocks the review account can reach. Expect exactly 3, all ZZ REVIEW.
+SELECT b.name, b.postcode, o.name AS organisation
+FROM public.field_agent_assignments fa
+JOIN public.blocks b        ON b.id = fa.block_id
+JOIN public.organizations o ON o.id = fa.organization_id
+WHERE fa.agent_email = 'appreview@genapm.com'
+ORDER BY b.name;
+
+-- 2. The security-relevant one: the account must NOT be an org member. A member
+--    reads that organisation's blocks directly under RLS, which would put real
+--    client buildings in front of a store reviewer. Expect 0.
+SELECT count(*) AS org_memberships_must_be_zero
+FROM public.organization_members om
+JOIN auth.users u ON u.id = om.user_id
+WHERE u.email = 'appreview@genapm.com';
+
+-- 3. That there is something to do when they get there. Expect 4 (3 overdue,
+--    1 due soon) across the three sandbox blocks.
+SELECT count(*) AS checks_due_now
+FROM public.block_fire_checks c
+JOIN public.blocks b ON b.id = c.block_id
+WHERE b.organization_id = 'dddddddd-0000-4000-8000-000000000001'
+  AND c.enabled AND c.next_due_at <= CURRENT_DATE + 14;
