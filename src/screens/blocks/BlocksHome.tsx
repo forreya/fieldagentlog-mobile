@@ -8,6 +8,7 @@ import { Note } from "@/components/Note";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
 import { StaleNote } from "@/components/StaleNote";
+import { AppMenu } from "@/components/AppMenu";
 import { StatusPill } from "@/components/StatusPill";
 import { useFind } from "@/data/useFind";
 import { freshnessLabel, useDashboard, type DashboardView } from "@/data/useDashboard";
@@ -28,7 +29,7 @@ import { colors, fonts, space } from "@/theme/tokens";
  * yesterday's list and the truth about its age, not an empty screen.
  */
 export function BlocksHome() {
-	const { state, signOut } = useAuth();
+	const { state } = useAuth();
 	const sync = useSyncStatus();
 	const dashboard = useDashboard();
 	const email = state.status === "signed_in" ? (state.user.email ?? undefined) : undefined;
@@ -39,15 +40,10 @@ export function BlocksHome() {
 		<Screen
 			title={staff ? "Your blocks" : "Your visits"}
 			sub="Fire-safety checks"
-			action={<StatusPill {...sync} />}
+			action={<BarActions sync={sync} />}
 			signedInAs={email}
 			scroll={false}
-			footer={
-				<>
-					<Button label="Sign out" variant="ghostDark" onPress={() => void signOut()} />
-					{staff ? <Button label="Plan visits" onPress={() => router.push("/(app)/plan")} style={styles.grow} /> : null}
-				</>
-			}
+			footer={staff ? <Button label="Plan visits" block onPress={() => router.push("/(app)/plan")} /> : undefined}
 		>
 			<Body dashboard={dashboard} staff={staff} />
 		</Screen>
@@ -137,6 +133,7 @@ function Summary({ dashboard, showStamp }: { dashboard: DashboardView; showStamp
 }
 
 const styles = StyleSheet.create({
+	bar: { flexDirection: "row", alignItems: "center", gap: space.s2 },
 	grow: { flex: 1 },
 	list: { gap: space.s3, paddingBottom: space.s6 },
 	summary: { gap: 2 },
@@ -145,3 +142,14 @@ const styles = StyleSheet.create({
 	overdue: { fontFamily: fonts.bodyMedium, color: colors.fail },
 	stamp: { fontFamily: fonts.body, fontSize: 13, color: colors.plateMuted },
 });
+
+/** The pill says what the queue is doing; the menu holds everything that is not
+ *  what this screen is for. */
+function BarActions({ sync }: { sync: ReturnType<typeof useSyncStatus> }) {
+	return (
+		<View style={styles.bar}>
+			<StatusPill {...sync} />
+			<AppMenu />
+		</View>
+	);
+}

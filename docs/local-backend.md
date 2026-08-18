@@ -131,6 +131,16 @@ What changed in the rebuild, and why it matters:
   in the dashboard, not in a migration, so nothing in the migration set makes
   one. Both photo paths - visit photos and site-report photos - write there, and
   without it every upload fails with "Bucket not found".
+- **`block-visits` fails here, and the cause is upstream.** The `field-agent`
+  broker selects `fire_visits.started_at`, and no migration in balancebuddy-web
+  ever creates that column - 0181 does not, and neither of the later ALTERs
+  (0201, 0219) adds it. PostgREST rejects the select, the broker rethrows the
+  error object, and the mobile block screen shows "Couldn't load past visits".
+  Deliberately NOT patched around in this harness: the column is missing from
+  the migration history, so anything built from it breaks the same way, and
+  hiding that locally would hide it everywhere. The fix belongs in the broker -
+  the value is optional there (`completed_at ?? started_at ?? created_at`), so
+  dropping it from the select costs nothing.
 - **A newly-added function needs `supabase stop` then `start`, not a container
   restart.** The edge runtime enumerates `supabase/functions` once at start, so
   a function copied in afterwards returns "Function not found" however many

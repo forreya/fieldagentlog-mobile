@@ -28,9 +28,15 @@ export interface ReportsView {
 	refresh: () => void;
 }
 
-/** The device's own queue, re-read whenever the engine reports anything. A
- *  report that just landed should leave this list without a pull-to-refresh. */
-function usePendingReports(): PendingReport[] {
+/**
+ * The device's own queue, re-read whenever the engine reports anything. A
+ * report that just landed should leave this list without a pull-to-refresh.
+ *
+ * Exported for the entry-point button, which shows how many are waiting. That
+ * count must NOT drag the server request along with it - the button sits on
+ * screens a cleaner opens in a basement.
+ */
+export function usePendingReports(): PendingReport[] {
 	const [pending, setPending] = useState<PendingReport[]>([]);
 
 	useEffect(() => {

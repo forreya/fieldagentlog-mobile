@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { FraAction, Verdict } from "@/api/contract";
 import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
+import { LeaveInspection } from "@/components/LeaveInspection";
 import { StatusPill } from "@/components/StatusPill";
 import { VerdictMark } from "@/components/VerdictMark";
 import type { VisitRecord } from "@/db/types";
@@ -67,7 +68,12 @@ export function VisitSummary({ state, dispatch, phase, onSubmit }: SummaryProps)
 		<Screen
 			title={blockNameOf(record)}
 			sub="Review and submit"
-			action={<StatusPill {...sync} />}
+			action={
+				<View style={styles.bar}>
+					<StatusPill {...sync} />
+					<LeaveInspection onLeave={() => dispatch({ type: "GO_INTRO" })} />
+				</View>
+			}
 			footer={
 				<>
 					<Button label="Back" variant="ghostDark" onPress={() => dispatch({ type: "BACK" })} />
@@ -189,6 +195,7 @@ function CheckRow({
 }
 
 const styles = StyleSheet.create({
+	bar: { flexDirection: "row", alignItems: "center", gap: space.s2 },
 	grow: { flex: 1 },
 	section: { gap: space.s3 },
 	heading: { fontFamily: fonts.bodyMedium, fontSize: 13, letterSpacing: 0.4, textTransform: "uppercase", color: colors.plateMuted },

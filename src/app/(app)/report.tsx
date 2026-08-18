@@ -2,22 +2,26 @@
 
 import { Redirect, useLocalSearchParams } from "expo-router";
 
+import { useAuth } from "@/auth/AuthProvider";
 import { ReportIssue } from "@/screens/report/ReportIssue";
 
 export default function ReportRoute() {
 	// useLocalSearchParams types these as strings whether or not they were
 	// passed, so a route reached without them hands the screen `undefined`.
 	const { siteId, siteName, attendance } = useLocalSearchParams<{ siteId?: string; siteName?: string; attendance?: string }>();
+	const { state } = useAuth();
+	const cleaner = state.status === "signed_in" && state.role === "cleaner";
 
-	// A report has to belong to a block: the broker refuses one that names a
-	// block the reporter is not assigned to, and with no block at all the queue
-	// ends up holding a row that can never be sent. Seen on a device - the
-	// composer accepted it, the server said "Block not assigned to you.", and it
-	// landed in Your reports as a permanent failure the person could not fix.
+	// A report has to name a block: the broker refuses one naming a block the
+	// reporter is not assigned to, and with no block at all the queue ends up
+	// holding a row nobody can clear. Seen on a device before the guard existed.
 	//
-	// Every real entry point passes the block, so arriving without one means a
-	// hand-typed or stale link. Home, rather than an error nobody can act on.
-	if (!siteId) return <Redirect href="/(app)" />;
+	// A cleaner is the exception, and the screen has a picker for them - their
+	// entry point is a list of sites, not one site. Staff and agents always
+	// report from a block they already have open, so arriving without one means
+	// a hand-typed or stale link.
+	if (!siteId && !cleaner) return <Redirect href="/(app)" />;
 
-	return <ReportIssue site={{ id: siteId, name: siteName ?? "this block" }} attendanceClientId={attendance ?? null} />;
+	const site = siteId ? { id: siteId, name: siteName ?? "this block" } : null;
+	return <ReportIssue site={site} attendanceClientId={attendance ?? null} />;
 }

@@ -7,7 +7,9 @@ import { Button } from "@/components/Button";
 import { DutiesCard } from "@/components/DutiesCard";
 import { FindBar } from "@/components/FindBar";
 import { Note } from "@/components/Note";
+import { AppMenu } from "@/components/AppMenu";
 import { OnSiteCard, formatDuration } from "@/components/OnSiteCard";
+import { ReportButton } from "@/components/ReportButton";
 import { Screen } from "@/components/Screen";
 import { StaleNote } from "@/components/StaleNote";
 import { SiteCard } from "@/components/SiteCard";
@@ -31,11 +33,10 @@ import { colors, fonts, space } from "@/theme/tokens";
  * sites rather than work, and the duty count is a footnote on each rather than
  * the headline.
  *
- * Tapping a site checks in there. The duties themselves and reporting an issue
- * arrive in E3.
+ * Tapping a site checks in there.
  */
 export function CleanerHome() {
-	const { state, signOut } = useAuth();
+	const { state } = useAuth();
 	const sync = useSyncStatus();
 	const sites = useSites();
 	const email = state.status === "signed_in" ? (state.user.email ?? undefined) : undefined;
@@ -47,10 +48,14 @@ export function CleanerHome() {
 		<Screen
 			title="Site visits"
 			sub="Your cleaning sites"
-			action={<StatusPill {...sync} />}
+			action={
+				<View style={styles.bar}>
+					<StatusPill {...sync} />
+					<AppMenu />
+				</View>
+			}
 			signedInAs={email}
 			scroll={false}
-			footer={<Button label="Sign out" variant="ghostDark" block onPress={() => void signOut()} />}
 		>
 			<Body sites={sites} attendance={attendance} duties={duties} checksSubmitted={checksSubmitted} />
 		</Screen>
@@ -127,6 +132,10 @@ function SiteList({ sites, find, attendance }: { sites: SitesView; find: ReturnT
 
 	return (
 		<>
+			{/* Not checked in anywhere, so the composer asks which site. Offered
+			    only when there is at least one - a picker over nothing is a dead
+			    end dressed up as an option. */}
+			{attendance.active ? null : <ReportButton />}
 			<Summary sites={data} showStamp={!error} updatedAt={updatedAt} />
 			{error ? <StaleNote message={error} updatedAt={updatedAt} /> : null}
 			{data.length > 3 ? (
@@ -180,11 +189,16 @@ function AttendanceBanners({ attendance }: { attendance: AttendanceView }) {
 
 /** Everything that only exists while somebody is standing in a building. */
 function OnSite({ attendance, duties }: { attendance: AttendanceView; duties: DutiesView }) {
-	if (!attendance.active) return null;
+	const session = attendance.active;
+	if (!session) return null;
 	return (
 		<>
-			<OnSiteCard session={attendance.active} busy={attendance.busy} onCheckOut={() => void attendance.checkOut()} />
+			<OnSiteCard session={session} busy={attendance.busy} onCheckOut={() => void attendance.checkOut()} />
 			<DutiesCard duties={duties.duties} busy={attendance.startingChecks} onStart={() => void attendance.startChecks()} />
+			{/* The block is not in question here, and the report is tied to the
+			    visit in progress - the local id, because a check-in still sitting
+			    in the queue has no server id yet and the broker links it later. */}
+			<ReportButton site={{ id: session.site_id, name: session.site_name }} attendanceClientId={session.local_id} />
 		</>
 	);
 }
@@ -208,6 +222,7 @@ function Summary({ sites, showStamp, updatedAt }: { sites: CleanerSite[]; showSt
 }
 
 const styles = StyleSheet.create({
+	bar: { flexDirection: "row", alignItems: "center", gap: space.s2 },
 	list: { gap: space.s3, paddingBottom: space.s6 },
 	summary: { gap: 2 },
 	counts: { fontFamily: fonts.body, fontSize: 15, color: colors.plateInk },

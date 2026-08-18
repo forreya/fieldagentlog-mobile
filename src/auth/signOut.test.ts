@@ -82,3 +82,16 @@ test("a sign-out with no signal still ends the session locally", async () => {
 	await expect(endSession()).resolves.toBeUndefined();
 	expect(await recallRole("u1")).toBeNull();
 });
+
+// Signing out here signs out HERE.
+//
+// supabase-js defaults to global scope, which revokes every refresh token on
+// the account. Watched on a device: signing out on one phone dropped a second
+// one mid-shift, with nothing on that phone to explain why. A shared company
+// login across a team's phones is normal in this trade, so the default turns
+// one person finishing their shift into everyone else being logged out.
+test("signs this device out, not every device on the account", async () => {
+	await endSession();
+
+	expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+});

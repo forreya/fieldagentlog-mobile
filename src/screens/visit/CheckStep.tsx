@@ -4,6 +4,7 @@ import { DueChip, FrequencyBadge, RefTag } from "@/components/Badges";
 import { Button } from "@/components/Button";
 import { PhotoCapture } from "@/components/PhotoCapture";
 import { Card, Screen } from "@/components/Screen";
+import { LeaveInspection } from "@/components/LeaveInspection";
 import { StatusPill } from "@/components/StatusPill";
 import { TextField } from "@/components/TextField";
 import { SeveritySelect, VerdictControl } from "@/components/VerdictControl";
@@ -35,7 +36,12 @@ export function CheckStep({ state, dispatch }: { state: WizardState; dispatch: (
 		<Screen
 			title={blockNameOf(state.record)}
 			sub={`Check ${state.checkIndex + 1} of ${checks.length} · ${answered} answered`}
-			action={<StatusPill {...sync} />}
+			action={
+				<View style={styles.bar}>
+					<StatusPill {...sync} />
+					<LeaveInspection onLeave={() => dispatch({ type: "GO_INTRO" })} />
+				</View>
+			}
 			footer={
 				<>
 					<Button label="Back" variant="ghostDark" onPress={() => dispatch({ type: "BACK" })} />
@@ -98,6 +104,7 @@ function FailDetail({ state, dispatch, checkId }: { state: WizardState; dispatch
 }
 
 const styles = StyleSheet.create({
+	bar: { flexDirection: "row", alignItems: "center", gap: space.s2 },
 	meta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space.s2 },
 	code: { fontFamily: fonts.mono, fontSize: 12, color: colors.plateMuted },
 	title: { fontFamily: fonts.displayHeavy, fontSize: 21, color: colors.plateInk, lineHeight: 27 },

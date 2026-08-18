@@ -77,7 +77,17 @@ async function signIn(email: string, password: string): Promise<{ error: string 
 /** The sign-out sequence. Exported so a test can prove what it does NOT do. */
 export async function endSession(): Promise<void> {
 	try {
-		if (supabaseConfigured()) await getSupabase().auth.signOut();
+		// Local scope, not the library's global default.
+		//
+		// Global revokes every refresh token the account has, so one person
+		// tapping Sign out at the end of a shift signs out every other device on
+		// that account - and a shared company login across a team's phones is
+		// normal here. Watched on a device: signing out on one phone dropped
+		// another mid-shift, with no explanation on the phone it happened to.
+		//
+		// Signing out everywhere is a real thing to want, but it is an account
+		// action taken deliberately, not what this button means.
+		if (supabaseConfigured()) await getSupabase().auth.signOut({ scope: "local" });
 	} catch {
 		// Already gone server-side, or no signal. The local session is cleared
 		// either way, which is what signing out means here.

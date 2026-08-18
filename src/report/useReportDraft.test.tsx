@@ -152,3 +152,41 @@ test("the category defaults to repairs and can be changed", async () => {
 	await act(async () => result.current.setCategory("waste"));
 	await waitFor(() => expect(result.current.draft.category).toBe("waste"));
 });
+
+// A cleaner opening the form cold has not said where yet. That is a validation
+// rule like the empty note, not a reason to refuse to render the form - and it
+// must never be guessed, because a report filed against the wrong building is
+// worse than one that made someone tap twice.
+test("a report with no site chosen is refused, and nothing is written", async () => {
+	const { result } = await renderHook(() => useReportDraft(null, null));
+
+	await act(async () => {
+		result.current.setNote("Bike chained across the fire exit.");
+	});
+
+	let sent: boolean | undefined;
+	await act(async () => {
+		sent = await result.current.send();
+	});
+
+	expect(sent).toBe(false);
+	expect(result.current.error).toBe("Choose which site this is about.");
+	expect(db.saveReport).not.toHaveBeenCalled();
+	expect(engine.sync).not.toHaveBeenCalled();
+});
+
+// The attendance link is what ties "someone reported a blocked fire door" to
+// "someone was cleaning that building at the time".
+test("a report raised while on site carries the attendance id", async () => {
+	const { result } = await renderHook(() => useReportDraft(SITE, "attend-1"));
+
+	await act(async () => {
+		result.current.setNote("Bin store door propped open.");
+	});
+	await act(async () => {
+		await result.current.send();
+	});
+
+	await waitFor(() => expect(db.saveReport).toHaveBeenCalled());
+	expect(db.saveReport.mock.calls[0][0]).toMatchObject({ site_id: "s1", attendance_client_id: "attend-1" });
+});

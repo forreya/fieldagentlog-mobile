@@ -33,7 +33,12 @@ export interface ReportDraftView {
 	dismissError: () => void;
 }
 
-export function useReportDraft(site: { id: string; name: string }, attendanceClientId: string | null): ReportDraftView {
+/**
+ * `site` is null while a cleaner has not picked one yet. A report with no site
+ * is not a report - the broker has nowhere to file it - so this is a validation
+ * rule like the note, not a reason to refuse to render the form.
+ */
+export function useReportDraft(site: { id: string; name: string } | null, attendanceClientId: string | null): ReportDraftView {
 	const [draft, setDraft] = useState<Draft>(emptyDraft);
 	const [busy, setBusy] = useState(false);
 	const [tried, setTried] = useState(false);
@@ -59,6 +64,10 @@ export function useReportDraft(site: { id: string; name: string }, attendanceCli
 	const send = useCallback(async () => {
 		if (busy) return false;
 		setTried(true);
+		if (!site) {
+			setError("Choose which site this is about.");
+			return false;
+		}
 		const problem = draftProblem(draft);
 		if (problem) {
 			setError(problem);

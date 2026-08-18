@@ -8,6 +8,7 @@ import { agentStartVisit } from "@/api/agent";
 import { staffStartVisit } from "@/api/staff";
 import { useAuth } from "@/auth/AuthProvider";
 import { Button } from "@/components/Button";
+import { ReportButton } from "@/components/ReportButton";
 import { Card, Screen } from "@/components/Screen";
 import { StatusPill } from "@/components/StatusPill";
 import { VisitHistory } from "@/components/VisitHistory";
@@ -126,6 +127,12 @@ function Body({
 			refreshControl={<RefreshControl refreshing={dashboard.refreshing || history.loading} onRefresh={refresh} tintColor={colors.signal} />}
 		>
 			<Text style={styles.lead}>Opens the on-site checklist for this block and records the visit against your name.</Text>
+
+			{/* Not part of a checklist and deliberately not inside the wizard: most
+			    of what gets noticed on site belongs to neither a check verdict nor
+			    a visit, and putting it behind "Start checklist" would mean it goes
+			    unreported by anyone not already doing one. */}
+			<ReportButton site={{ id: block.id, name: block.name }} />
 			{error ? (
 				<Text accessibilityRole="alert" style={styles.error}>
 					{error}

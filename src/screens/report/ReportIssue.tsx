@@ -1,13 +1,16 @@
 import { Image } from "expo-image";
+import { useState } from "react";
 
 import { goBack } from "@/lib/nav";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Banner } from "@/components/Banner";
 import { Button } from "@/components/Button";
+import { Note } from "@/components/Note";
 import { Screen } from "@/components/Screen";
 import { StatusPill } from "@/components/StatusPill";
 import { TextField } from "@/components/TextField";
+import { useSites, type SitesView } from "@/data/useSites";
 import { REPORT_CATEGORIES, type ReportCategory } from "@/db/types";
 import { MAX_NOTE, MAX_PHOTOS } from "@/report/draft";
 import { useReportDraft, type ReportDraftView } from "@/report/useReportDraft";
@@ -25,7 +28,31 @@ import { colors, fonts, radii, space, TAP } from "@/theme/tokens";
  * Sending is persist-then-queue. Someone in a basement taps Send, the report is
  * on the phone, and they walk away. Nothing here waits for a network.
  */
-export function ReportIssue({ site, attendanceClientId }: { site: { id: string; name: string }; attendanceClientId?: string | null }) {
+export interface ReportSite {
+	id: string;
+	name: string;
+}
+
+/**
+ * `site` fixed means the block is not in question - they are standing in it, or
+ * they opened it from its own screen - so it reads as a fact rather than as one
+ * more thing to get right. Null means a cleaner opened the form cold and has to
+ * say where, which is the only case that needs a picker.
+ */
+export function ReportIssue({ site, attendanceClientId }: { site: ReportSite | null; attendanceClientId?: string | null }) {
+	// Two components rather than one with a flag, so the fixed-block form never
+	// reaches useSites. It is opened from the on-site card by someone standing in
+	// a bin store, and it must not depend on a list it will never show.
+	return site ? <Composer site={site} picker={null} attendanceClientId={attendanceClientId} /> : <Picking attendanceClientId={attendanceClientId} />;
+}
+
+function Picking({ attendanceClientId }: { attendanceClientId?: string | null }) {
+	const sites = useSites();
+	const [chosen, setChosen] = useState<ReportSite | null>(null);
+	return <Composer site={chosen} picker={{ sites, chosen, choose: setChosen }} attendanceClientId={attendanceClientId} />;
+}
+
+function Composer({ site, picker, attendanceClientId }: { site: ReportSite | null; picker: PickerProps | null; attendanceClientId?: string | null }) {
 	const sync = useSyncStatus();
 	const report = useReportDraft(site, attendanceClientId ?? null);
 
@@ -36,7 +63,7 @@ export function ReportIssue({ site, attendanceClientId }: { site: { id: string; 
 	return (
 		<Screen
 			title="Report an issue"
-			sub={site.name}
+			sub={site?.name ?? "Which site?"}
 			action={<StatusPill {...sync} />}
 			scroll={false}
 			footer={
@@ -46,18 +73,75 @@ export function ReportIssue({ site, attendanceClientId }: { site: { id: string; 
 				</>
 			}
 		>
-			<Body report={report} />
+			<Body report={report} picker={picker} />
 		</Screen>
 	);
 }
 
-function Body({ report }: { report: ReportDraftView }) {
+interface PickerProps {
+	sites: SitesView;
+	chosen: ReportSite | null;
+	choose: (site: ReportSite) => void;
+}
+
+/**
+ * Which site, when they opened the form cold.
+ *
+ * Reads the cleaner's own cached list rather than asking the server: it is
+ * already on the device from the home screen they just came from, so the picker
+ * works with no signal. A cleaner who has never loaded it is told so plainly -
+ * there is nothing useful to guess.
+ */
+function SitePicker({ sites, chosen, choose }: PickerProps) {
+	const list = sites.sites;
+
+	if (!list) {
+		return sites.loading ? (
+			<Note title="Loading your sites" body="This only takes a moment." />
+		) : (
+			<Note title="Couldn't load your sites" body={sites.error ?? "Something went wrong."}>
+				<Button label="Try again" variant="ghost" onPress={sites.refresh} />
+			</Note>
+		);
+	}
+
+	if (list.length === 0) {
+		return <Note title="No sites yet" body="When your cleaning company is assigned to a building, it appears here." />;
+	}
+
+	return (
+		<>
+			<Text style={styles.label}>WHICH SITE</Text>
+			<View style={styles.categories}>
+				{list.map((site) => {
+					const on = site.id === chosen?.id;
+					return (
+						<Pressable
+							key={site.id}
+							accessibilityRole="radio"
+							accessibilityState={{ selected: on }}
+							accessibilityLabel={site.name}
+							onPress={() => choose({ id: site.id, name: site.name })}
+							style={[styles.chip, on && styles.chipOn]}
+						>
+							<Text style={[styles.chipText, on && styles.chipTextOn]}>{site.name}</Text>
+						</Pressable>
+					);
+				})}
+			</View>
+		</>
+	);
+}
+
+function Body({ report, picker }: { report: ReportDraftView; picker: PickerProps | null }) {
 	const { draft } = report;
 	const noteError = report.tried && !draft.note.trim() ? "Please say what the issue is." : null;
 
 	return (
 		<ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
 			{report.error ? <Banner tone="bad" text={report.error} onDismiss={report.dismissError} /> : null}
+
+			{picker ? <SitePicker {...picker} /> : null}
 
 			<Text style={styles.label}>WHAT KIND OF ISSUE</Text>
 			<Categories selected={draft.category} onSelect={report.setCategory} />
