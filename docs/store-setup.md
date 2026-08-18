@@ -18,8 +18,13 @@ filling in the production declarations, not to redo the setup.
 | Play app           | `com.fieldagentlog.app`, Play App Signing accepted              |
 | Version convention | `1.0.x`, patch bumped by hand per release                       |
 
-Still outstanding: the privacy policy URL, the Play service account, listing assets, and the
-production declarations. Everything else here is history.
+**Review sandbox: created on live 2026-08-18** (3 blocks, 6 checks, 3 assignments). A reviewer
+signing in as `appreview@genapm.com` sees three invented `ZZ REVIEW` buildings, so anything they
+submit lands on those rather than in a real block's fire logbook. Re-run `review-sandbox.sql` in
+the SQL editor to reset the due dates after a review; it is idempotent.
+
+Still outstanding: the Play service account, listing assets, and the production declarations.
+Everything else here is history.
 
 The pre-existing state, checked the same day:
 
@@ -39,11 +44,11 @@ uploads go through the console by hand.
 
 None of these are console work, and all three stop a submission dead:
 
-1. **Privacy policy at a public URL.** Both stores require one and there is none on
-   fieldagentlog.com today. The PWA repo (`../fieldagent`) is Netlify-hosted on that domain, so
-   `public/privacy.html` plus a link in the footer is the whole job.
-2. **A reviewer login.** Both stores reject an app that opens on a login wall with no way past it.
-3. **Screenshots.** Simulator captures are fine and allowed.
+1. ~~**Privacy policy at a public URL.**~~ Done: https://fieldagentlog.com/privacy, plus
+   /privacy/delete for Play's data-deletion requirement.
+2. ~~**A reviewer login.**~~ Done: `appreview@genapm.com`, scoped to the ZZ REVIEW sandbox org.
+   The password is in the team password manager, not here.
+3. **Screenshots.** Simulator captures are fine and allowed. Still to do, after Milestone F.
 
 ---
 
