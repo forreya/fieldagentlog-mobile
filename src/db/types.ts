@@ -132,6 +132,10 @@ export interface PendingReport {
 	point: GeoPoint | null;
 	/** The cleaning visit this was raised during, when there was one. */
 	attendance_client_id: string | null;
+	/** Set when a push failed in a way retrying cannot fix - the reporter was
+	 *  unassigned from the block, or the block was deleted. Persisted so the
+	 *  queue stops offering a task that can only fail. */
+	sync_error?: { message: string; at: number };
 }
 
 /** How many photos on a report still hold bytes that have not uploaded. */

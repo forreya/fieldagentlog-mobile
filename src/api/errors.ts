@@ -160,3 +160,27 @@ export function classifyBrokerStatus(status: number, body?: unknown): ApiError {
 	}
 	return new ApiError("invalid", said ?? "That request couldn't be completed.", { status });
 }
+
+/**
+ * True when nothing will ever make this request succeed, so a queue should stop
+ * offering it rather than retry for the life of the install.
+ *
+ * `auth` is deliberately NOT in this list, and it is the whole point of having
+ * a separate predicate from `retryable`. A session that has expired is not
+ * retryable *as-is* - but the person signs back in and the very same request
+ * goes through. Recording it as permanent throws away a queued visit, shift or
+ * report that was moments from sending. Found on device: two reports queued
+ * while the session was invalid came back marked "You're not signed in." and
+ * were never offered again.
+ *
+ * The three that really are unfixable:
+ *   dead_end  the link is spent; there is no version of this that works
+ *   forbidden the caller is not allowed this block, and signing in again
+ *             changes nothing about that
+ *   invalid   the server refused the payload; the same bytes will be refused
+ *             again
+ */
+export function unfixable(error: unknown): error is ApiError {
+	if (!(error instanceof ApiError)) return false;
+	return error.kind === "dead_end" || error.kind === "forbidden" || error.kind === "invalid";
+}

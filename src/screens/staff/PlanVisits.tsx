@@ -1,4 +1,6 @@
 import { router } from "expo-router";
+
+import { goBack } from "@/lib/nav";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
@@ -35,7 +37,7 @@ export function PlanVisits() {
 			sub="Nearby blocks, grouped into rounds"
 			action={<StatusPill {...sync} />}
 			scroll={false}
-			footer={<Button label="Back" variant="ghostDark" block onPress={() => router.back()} />}
+			footer={<Button label="Back" variant="ghostDark" block onPress={() => goBack()} />}
 		>
 			{!staff ? (
 				<Note title="A staff tool" body="Planning rounds needs the whole portfolio, so it is only available to staff accounts." />

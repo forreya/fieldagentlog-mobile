@@ -6,7 +6,7 @@
 // version we expect - are exactly what gets asked down a phone when something
 // is wrong on site. Phase D2 builds the user-facing About screen on top of it.
 
-import { router } from "expo-router";
+import { goBack } from "@/lib/nav";
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -70,7 +70,7 @@ export function DiagnosticsScreen() {
 			title="Diagnostics"
 			sub="What the app thinks is true"
 			action={<StatusPill {...pillState(sync)} />}
-			footer={<Button label="Back" variant="ghostDark" onPress={() => router.back()} />}
+			footer={<Button label="Back" variant="ghostDark" onPress={() => goBack("/")} />}
 		>
 			<Card>
 				<Text style={styles.heading}>This build</Text>

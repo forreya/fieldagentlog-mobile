@@ -141,6 +141,16 @@ UPDATE public.block_fire_checks SET cleaner_assignable = true
 WHERE catalogue_code IN ('FA_WEEKLY','HOUSEKEEPING','EL_MONTHLY');
 SQL
 
+# The bucket both photo paths write to. Storage is configured in the dashboard
+# rather than in a migration, so nothing above creates it and uploads fail with
+# "Bucket not found" - a gap that hid the whole photo path locally until a site
+# report tried to use it. Private, as production is: photos are read back
+# through a signed URL, never straight off the bucket.
+"${PSQL[@]}" <<SQL
+INSERT INTO storage.buckets (id, name, public) VALUES ('org-templates','org-templates',false)
+ON CONFLICT (id) DO NOTHING;
+SQL
+
 "${PSQL[@]}" -c "
 SELECT (SELECT count(*) FROM public.blocks)                   AS blocks,
        (SELECT count(*) FROM public.block_fire_checks)        AS checks,

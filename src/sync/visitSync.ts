@@ -15,7 +15,7 @@
 // so a submit retried after a lost response returns the stored result instead
 // of recording a second visit.
 
-import { ApiError } from "@/api/errors";
+import { unfixable } from "@/api/errors";
 import { submitVisit, uploadPhoto } from "@/api/visit";
 import { deletePhoto, pendingPhotosForToken, setPhotoRef } from "@/db/photos";
 import { deleteStoredPhoto } from "@/db/photoStore";
@@ -110,7 +110,7 @@ export async function pushVisit(record: VisitRecord): Promise<void> {
 		// engine does not schedule a retry for one, but every other trigger -
 		// app start, reconnect, foreground - would offer the task again, and a
 		// spent token would be re-POSTed for the life of the install.
-		if (err instanceof ApiError && !err.retryable) {
+		if (unfixable(err)) {
 			await saveVisit({ ...current, submit_error: { message: err.message, at: Date.now() } });
 		}
 		throw err;

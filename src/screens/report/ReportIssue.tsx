@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
-import { router } from "expo-router";
+
+import { goBack } from "@/lib/nav";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Banner } from "@/components/Banner";
@@ -29,7 +30,7 @@ export function ReportIssue({ site, attendanceClientId }: { site: { id: string; 
 	const report = useReportDraft(site, attendanceClientId ?? null);
 
 	async function send() {
-		if (await report.send()) router.back();
+		if (await report.send()) goBack();
 	}
 
 	return (
@@ -40,7 +41,7 @@ export function ReportIssue({ site, attendanceClientId }: { site: { id: string; 
 			scroll={false}
 			footer={
 				<>
-					<Button label="Cancel" variant="ghostDark" onPress={() => router.back()} />
+					<Button label="Cancel" variant="ghostDark" onPress={() => goBack()} />
 					<Button label="Send" busy={report.busy} onPress={() => void send()} style={styles.grow} />
 				</>
 			}

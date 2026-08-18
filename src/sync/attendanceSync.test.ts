@@ -194,3 +194,13 @@ describe("a failure retrying cannot fix", () => {
 		expect(db.deleteAttendance).not.toHaveBeenCalled();
 	});
 });
+
+test("a shift queued while signed out is kept sendable", async () => {
+	// Same rule as reports: `auth` is not retryable as-is, but a sign-in fixes
+	// it, and a cleaner's shift must not be discarded because a token lapsed.
+	api.checkOut.mockRejectedValue(new ApiError("auth", "You're not signed in."));
+
+	await expect(pushAttendance(session({ synced_in: true, check_out: OUT }))).rejects.toThrow();
+
+	expect(saved().every((s) => !s.sync_error)).toBe(true);
+});

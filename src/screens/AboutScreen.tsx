@@ -1,4 +1,6 @@
 import { router } from "expo-router";
+
+import { goBack } from "@/lib/nav";
 import { Linking, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
@@ -25,7 +27,7 @@ export function AboutScreen() {
 			sub="This app"
 			footer={
 				<>
-					<Button label="Back" variant="ghostDark" onPress={() => router.back()} />
+					<Button label="Back" variant="ghostDark" onPress={() => goBack("/")} />
 					<Button label="Diagnostics" variant="ghostDark" onPress={() => router.push("/diagnostics")} style={styles.grow} />
 				</>
 			}

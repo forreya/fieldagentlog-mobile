@@ -1,4 +1,6 @@
 import { router } from "expo-router";
+
+import { goBack } from "@/lib/nav";
 import { useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -34,7 +36,7 @@ export function BlockDetail({ blockId }: { blockId: string }) {
 				title="Block"
 				sub="Fire-safety checks"
 				action={<StatusPill {...sync} />}
-				footer={<Button label="Back" variant="ghostDark" block onPress={() => router.back()} />}
+				footer={<Button label="Back" variant="ghostDark" block onPress={() => goBack()} />}
 			>
 				<Card>
 					<Text style={styles.h}>{dashboard.loading ? "Loading" : "That block isn't in your list"}</Text>
@@ -87,7 +89,7 @@ function Detail({ block, dashboard }: { block: BlockWithJobs; dashboard: Dashboa
 			scroll={false}
 			footer={
 				<>
-					<Button label="Back" variant="ghostDark" onPress={() => router.back()} />
+					<Button label="Back" variant="ghostDark" onPress={() => goBack()} />
 					<Button label="Start checklist" busy={busy} onPress={() => void start()} style={styles.grow} />
 				</>
 			}

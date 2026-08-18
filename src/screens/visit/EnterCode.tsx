@@ -8,6 +8,8 @@
 // building, so there has to be a way to type it in.
 
 import { router } from "expo-router";
+
+import { goBack } from "@/lib/nav";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -38,7 +40,7 @@ export function EnterCode() {
 			sub="Paste the link you were sent"
 			footer={
 				<>
-					<Button label="Back" variant="ghostDark" onPress={() => router.back()} />
+					<Button label="Back" variant="ghostDark" onPress={() => goBack("/")} />
 					<Button label="Open visit" disabled={!value.trim()} onPress={open} style={styles.grow} />
 				</>
 			}

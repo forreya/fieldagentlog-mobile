@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { goBack } from "@/lib/nav";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -24,7 +24,7 @@ export function Gallery() {
 			title="Gallery"
 			sub="Tokens and primitives"
 			action={<StatusPill online syncing />}
-			footer={<Button label="Back" variant="ghostDark" onPress={() => router.back()} block />}
+			footer={<Button label="Back" variant="ghostDark" onPress={() => goBack("/")} block />}
 		>
 			<Section title="Buttons">
 				<Button label="Primary action" onPress={noop} />

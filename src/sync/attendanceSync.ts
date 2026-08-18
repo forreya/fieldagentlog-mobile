@@ -14,7 +14,7 @@
 //   - check-out on an already-closed session returns the stored duration
 // so a retry after a lost response costs one request and changes nothing.
 
-import { ApiError } from "@/api/errors";
+import { unfixable } from "@/api/errors";
 import { deleteAttendance, saveAttendance } from "@/db/attendance";
 import type { AttendanceSession } from "@/db/types";
 import { checkIn, checkOut } from "@/api/cleaner";
@@ -49,7 +49,7 @@ export async function pushAttendance(session: AttendanceSession): Promise<void> 
 		// start, reconnect, foreground - would offer the task again, and a
 		// check-out that can never land would be re-POSTed for the life of the
 		// install. This is the same fix visitSync carries for a spent token.
-		if (err instanceof ApiError && !err.retryable) {
+		if (unfixable(err)) {
 			await saveAttendance({ ...latest, sync_error: { message: err.message, at: Date.now() } });
 		}
 		throw err;

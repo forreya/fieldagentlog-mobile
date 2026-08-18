@@ -81,6 +81,9 @@ jest.mock("./roleCache", () => ({
 
 jest.mock("@/api/session", () => ({ onSessionExpired: () => () => undefined }));
 
+const mockRequestSync = jest.fn();
+jest.mock("@/sync/triggers", () => ({ requestSync: (reason: string) => mockRequestSync(reason) }));
+
 // Buttons rather than captured callbacks: assigning to a module-level object
 // during render is a mutation the React Compiler rightly refuses.
 function Probe() {
@@ -101,6 +104,7 @@ beforeEach(() => {
 	mockState.client = makeClient();
 	mockState.built = 1;
 	mockState.subscribeCount = 0;
+	mockRequestSync.mockClear();
 });
 
 async function mount() {
@@ -144,4 +148,32 @@ test("the mock really does break the listener when the client is replaced", asyn
 
 	expect(mockState.built).toBe(2);
 	expect(mockState.client.listeners).toHaveLength(0);
+});
+
+// Signing in is a sync trigger.
+//
+// Work rejected with "You're not signed in." is retryable - signing back in is
+// the fix. Without a nudge here the queue waits for an unrelated trigger, which
+// on device meant a report sitting through a whole signed-in session and only
+// leaving at the next foreground.
+test("a session arriving nudges the sync queue", async () => {
+	await mount();
+	expect(mockRequestSync).not.toHaveBeenCalled();
+
+	pressSignIn();
+	await waitFor(() => expect(screen.getByText("in:cleaner")).toBeTruthy());
+
+	expect(mockRequestSync).toHaveBeenCalledWith("signed in");
+});
+
+test("signing out does not nudge the queue", async () => {
+	await mount();
+	pressSignIn();
+	await waitFor(() => expect(screen.getByText("in:cleaner")).toBeTruthy());
+	mockRequestSync.mockClear();
+
+	pressSignOut();
+	await waitFor(() => expect(screen.getByText("signed_out")).toBeTruthy());
+
+	expect(mockRequestSync).not.toHaveBeenCalled();
 });

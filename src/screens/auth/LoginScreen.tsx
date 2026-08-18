@@ -1,4 +1,6 @@
 import { Redirect, router } from "expo-router";
+
+import { goBack } from "@/lib/nav";
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
@@ -54,7 +56,7 @@ export function LoginScreen() {
 			sub="Staff, field agents and cleaners"
 			footer={
 				<>
-					<Button label="Back" variant="ghostDark" onPress={() => router.back()} />
+					<Button label="Back" variant="ghostDark" onPress={() => goBack("/")} />
 					<Button label="Sign in" busy={busy} onPress={() => void submit()} style={styles.grow} />
 				</>
 			}

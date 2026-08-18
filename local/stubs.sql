@@ -18,3 +18,22 @@ CREATE TABLE IF NOT EXISTS public.work_orders (
 );
 
 ALTER TABLE public.work_orders ENABLE ROW LEVEL SECURITY;
+
+
+-- The second FK target we do not want to pull in.
+--
+-- 0249_site_reports links a report to the block_task it was promoted into.
+-- The real block_tasks (0129) references incoming_emails and leaseholders,
+-- which reference more again - a long tail this app never touches.
+--
+-- Same rule as work_orders above: an FK target only, deliberately not the real
+-- shape. If FieldAgentLog ever reads a task, replace this with the real chain.
+
+CREATE TABLE IF NOT EXISTS public.block_tasks (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid REFERENCES public.organizations(id) ON DELETE CASCADE,
+  block_id        uuid REFERENCES public.blocks(id) ON DELETE CASCADE,
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.block_tasks ENABLE ROW LEVEL SECURITY;

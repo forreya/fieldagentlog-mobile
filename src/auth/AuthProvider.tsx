@@ -12,9 +12,9 @@ import type { Session, User } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { onSessionExpired } from "@/api/session";
+import { requestSync } from "@/sync/triggers";
 
 import { signInMessage } from "./messages";
-
 import { forgetRole, recallRole, rememberRole } from "./roleCache";
 import type { UserRole } from "./roles";
 import { getSupabase, resolveUserRole, supabaseConfigured } from "./supabase";
@@ -97,7 +97,21 @@ export async function endSession(): Promise<void> {
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const [state, setState] = useState<AuthState>(() => (supabaseConfigured() ? { status: "loading" } : { status: "unconfigured" }));
 
-	const adopt = useCallback(async (session: Session | null) => setState(await personaFor(session)), []);
+	const adopt = useCallback(async (session: Session | null) => {
+		setState(await personaFor(session));
+		// A session arriving is a sync trigger in its own right.
+		//
+		// Work that failed with "You're not signed in." is retryable, not dead -
+		// signing back in is exactly what makes it succeed. Without this nudge the
+		// queue sat there while the app was open and signed in, and only moved at
+		// the next unrelated trigger. Watched on device: a report waited through a
+		// whole session and left on the next foreground.
+		//
+		// Fires on token refresh too, which is the same situation arriving by a
+		// different route. The engine is single-flight and skips when there is no
+		// work, so a spare call costs nothing.
+		if (session) requestSync("signed in");
+	}, []);
 
 	useEffect(() => {
 		if (!supabaseConfigured()) return;

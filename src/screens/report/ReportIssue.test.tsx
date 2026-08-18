@@ -1,11 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { router } from "expo-router";
+import { goBack } from "@/lib/nav";
 
 import type { ReportDraftView } from "@/report/useReportDraft";
 
 import { ReportIssue } from "./ReportIssue";
 
-jest.mock("expo-router", () => ({ router: { back: jest.fn() } }));
+jest.mock("expo-router", () => ({ router: { back: jest.fn(), replace: jest.fn(), canGoBack: () => true } }));
+jest.mock("@/lib/nav", () => ({ goBack: jest.fn() }));
 jest.mock("@/sync/useSyncStatus", () => ({ useSyncStatus: () => ({ online: true, syncing: false, pending: 0 }) }));
 
 const mockDraft = { current: {} as ReportDraftView };
@@ -104,6 +105,6 @@ test("cancel goes back without sending", async () => {
 	const view = await show();
 	fireEvent.press(screen.getByRole("button", { name: "Cancel" }));
 
-	expect(router.back).toHaveBeenCalled();
+	expect(goBack).toHaveBeenCalled();
 	expect(view.send).not.toHaveBeenCalled();
 });

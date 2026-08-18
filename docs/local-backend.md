@@ -127,6 +127,14 @@ What changed in the rebuild, and why it matters:
 - **The seed blanks eight `auth.users` token columns.** GoTrue scans them into
   non-nullable Go strings, so a NULL there makes every sign-in fail with a 500
   "Database error querying schema" while the row looks perfect in psql.
+- **The seed creates the `org-templates` storage bucket.** Buckets are configured
+  in the dashboard, not in a migration, so nothing in the migration set makes
+  one. Both photo paths - visit photos and site-report photos - write there, and
+  without it every upload fails with "Bucket not found".
+- **A newly-added function needs `supabase stop` then `start`, not a container
+  restart.** The edge runtime enumerates `supabase/functions` once at start, so
+  a function copied in afterwards returns "Function not found" however many
+  times the container is restarted.
 
 Verified after the rebuild: both accounts sign in, staff reads four blocks
 through PostgREST under RLS, the agent reads zero directly and exactly their two

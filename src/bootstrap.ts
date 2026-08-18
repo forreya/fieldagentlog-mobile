@@ -10,10 +10,12 @@ import { getDatabase } from "@/db/database";
 import { allPhotos } from "@/db/photos";
 import { sweepOrphans } from "@/db/photoStore";
 import { allAttendance } from "@/db/attendance";
+import { allReports } from "@/db/reports";
 import { allVisits } from "@/db/visits";
 import { syncEngine } from "@/sync/engine";
 import { startSyncTriggers } from "@/sync/triggers";
 import { createAttendanceSource } from "@/sync/attendanceSync";
+import { createReportSource } from "@/sync/reportSync";
 import { createVisitSource } from "@/sync/visitSync";
 
 /**
@@ -50,6 +52,7 @@ export async function bootstrap(): Promise<void> {
 	// Registered unconditionally, not only for cleaners: a session queued before
 	// a sign-out belongs to the device, and must still go up afterwards.
 	syncEngine.register(createAttendanceSource(allAttendance));
+	syncEngine.register(createReportSource(allReports));
 	teardown = startSyncTriggers(syncEngine);
 
 	// Best-effort housekeeping; never worth delaying the first screen.

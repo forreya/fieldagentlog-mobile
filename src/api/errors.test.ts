@@ -8,6 +8,7 @@ import {
 	isTerminalVisitStatus,
 	offlineError,
 	timeoutError,
+	unfixable,
 } from "./errors";
 
 describe("classifyStatus", () => {
@@ -119,5 +120,33 @@ describe("a server message that is not worth showing", () => {
 
 	test("a real message still wins", () => {
 		expect(brokerMessage({ error: "You are not assigned to this block." })).toBe("You are not assigned to this block.");
+	});
+});
+
+describe("unfixable", () => {
+	// The predicate a queue uses to decide "stop offering this forever".
+
+	test.each([["dead_end"], ["forbidden"], ["invalid"]] as const)("%s can never succeed", (kind) => {
+		expect(unfixable(new ApiError(kind, "nope"))).toBe(true);
+	});
+
+	test.each([["network"], ["server"]] as const)("%s is worth retrying", (kind) => {
+		expect(unfixable(new ApiError(kind, "later"))).toBe(false);
+	});
+
+	test("an expired session is NOT unfixable - signing back in fixes it", () => {
+		// The bug this exists for. `auth` is not retryable as-is, so a queue keying
+		// off `retryable` marks the work permanently failed - throwing away a
+		// visit, shift or report that would send the moment somebody signs in.
+		// Found on device: two queued reports came back "You're not signed in."
+		// and were never offered again.
+		expect(unfixable(new ApiError("auth", "You're not signed in."))).toBe(false);
+		expect(new ApiError("auth", "x").retryable).toBe(false);
+	});
+
+	test("anything that is not an ApiError is not our call to make", () => {
+		expect(unfixable(new Error("kaboom"))).toBe(false);
+		expect(unfixable("kaboom")).toBe(false);
+		expect(unfixable(null)).toBe(false);
 	});
 });

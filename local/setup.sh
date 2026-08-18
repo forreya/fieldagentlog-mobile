@@ -40,6 +40,7 @@ STACK="$HERE/stack"
 #   0219       cleaner attendance: adds fire_visits.scope and the
 #              block_fire_checks.cleaner_assignable that visit-packet selects
 #   0237       field_agent_assignments
+#   0249       site_reports, for Milestone F
 MIGRATIONS=(
   0001_init
   0002_rls_base
@@ -55,9 +56,10 @@ MIGRATIONS=(
   0182_fire_safety_defects
   0219_cleaner_attendance
   0237_field_agent_assignments
+  0249_site_reports
 )
 
-FUNCTIONS=(_shared field-agent cleaner visit-packet visit-photo visit-submit)
+FUNCTIONS=(_shared field-agent cleaner site-report visit-packet visit-photo visit-submit)
 
 if [ "${1:-}" = "--reset" ] && [ -d "$STACK" ]; then
   ( cd "$STACK" && npx --yes supabase@latest db reset )
