@@ -11,7 +11,9 @@
 			"icon": "./assets/expo.icon",
 			"bundleIdentifier": "com.fieldagentlog.app",
 			"supportsTablet": false,
-			"associatedDomains": ["applinks:fieldagentlog.com"],
+			"associatedDomains": [
+				"applinks:fieldagentlog.com"
+			],
 			"infoPlist": {
 				"ITSAppUsesNonExemptEncryption": false
 			}
@@ -26,9 +28,12 @@
 			"predictiveBackGestureEnabled": false,
 			"package": "com.fieldagentlog.app",
 			"blockedPermissions": [
-				"android.permission.RECORD_AUDIO",
+				"android.permission.ACCESS_BACKGROUND_LOCATION",
 				"android.permission.READ_MEDIA_VIDEO",
-				"android.permission.ACCESS_BACKGROUND_LOCATION"
+				"android.permission.RECORD_AUDIO",
+				"android.permission.SYSTEM_ALERT_WINDOW",
+				"android.permission.VIBRATE",
+				"android.permission.WRITE_EXTERNAL_STORAGE"
 			],
 			"intentFilters": [
 				{
@@ -41,7 +46,10 @@
 							"pathPrefix": "/v/"
 						}
 					],
-					"category": ["BROWSABLE", "DEFAULT"]
+					"category": [
+						"BROWSABLE",
+						"DEFAULT"
+					]
 				}
 			]
 		},
@@ -61,19 +69,27 @@
 			],
 			"expo-font",
 			"expo-sqlite",
-			"expo-secure-store",
+			[
+				"expo-secure-store",
+				{
+					"faceIDPermission": false
+				}
+			],
 			[
 				"expo-image-picker",
 				{
-					"photosPermission": "FieldAgentLog uses your photos so you can attach an existing picture of a fault to a check.",
-					"cameraPermission": "FieldAgentLog uses the camera so you can photograph a fault as evidence on the fire logbook."
+					"photosPermission": "FieldAgentLog uses your photos so you can attach an existing picture to a fire-safety check or an issue you're reporting.",
+					"cameraPermission": "FieldAgentLog uses the camera so you can photograph a fault on a fire-safety check or an issue you're reporting.",
+					"microphonePermission": false
 				}
 			],
 			[
 				"expo-location",
 				{
-					"locationAlwaysAndWhenInUsePermission": "FieldAgentLog uses your location only when you ask it to sort your blocks by distance. It is never tracked in the background.",
-					"locationWhenInUsePermission": "FieldAgentLog uses your location only when you ask it to sort your blocks by distance. It is never tracked in the background.",
+					"locationWhenInUsePermission": "FieldAgentLog uses your location when you check in or out of a site, when you report an issue, and when you ask it to sort blocks by distance. It is never used in the background.",
+					"locationAlwaysAndWhenInUsePermission": false,
+					"locationAlwaysPermission": false,
+					"motionUsagePermission": false,
 					"isIosBackgroundLocationEnabled": false,
 					"isAndroidBackgroundLocationEnabled": false
 				}
