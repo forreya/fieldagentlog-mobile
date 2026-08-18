@@ -81,6 +81,11 @@ export interface AttendanceSession {
 	server_id: string | null;
 	synced_in: boolean;
 	synced_out: boolean;
+	/** Set when a push failed in a way retrying cannot fix - the block was
+	 *  deleted out from under an open session, or the cleaner was unassigned
+	 *  mid-shift. Persisted so the queue stops offering a task that can only
+	 *  fail, exactly as `submit_error` does for a visit. */
+	sync_error?: { message: string; at: number };
 }
 
 /** Coarse routing hint chosen on the phone. Mirrors the server's CHECK constraint. */

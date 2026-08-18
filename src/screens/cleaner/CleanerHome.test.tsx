@@ -1,6 +1,6 @@
 // The cleaner's site list, in each state it can be in.
 
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import type { CleanerSite } from "@/api/cleaner";
 import type { SitesView } from "@/data/useSites";
@@ -31,7 +31,19 @@ const site = (over: Partial<CleanerSite>): CleanerSite => ({
 	...over,
 });
 
-async function show(view: Partial<SitesView>) {
+const onSiteAt = (siteName: string) => ({
+	local_id: "a",
+	site_id: "s1",
+	site_name: siteName,
+	cleaner_email: null,
+	check_in: { lat: 51.5, lng: -0.1, accuracy: 8, at: Date.now() - 60_000 },
+	check_out: null,
+	server_id: "srv",
+	synced_in: true,
+	synced_out: false,
+});
+
+async function show(view: Partial<SitesView>, attendance: Record<string, unknown> = {}) {
 	mockAttendance.current = {
 		active: null,
 		justClosed: null,
@@ -40,8 +52,10 @@ async function show(view: Partial<SitesView>) {
 		checkIn: jest.fn(),
 		checkOut: jest.fn(),
 		startChecks: jest.fn(),
+		startingChecks: false,
 		dismissError: jest.fn(),
 		dismissClosed: jest.fn(),
+		...attendance,
 	};
 	mockSites.current = { sites: null, loading: false, refreshing: false, error: null, updatedAt: 1, refresh: jest.fn(), ...view };
 	await render(<CleanerHome />);
@@ -104,4 +118,35 @@ test("the search bar stays out of the way until there is a list worth searching"
 
 	await show({ sites: ["a", "b", "c", "d"].map((id) => site({ id, name: `Site ${id}` })) });
 	expect(screen.getByPlaceholderText(/Search by name/)).toBeTruthy();
+});
+
+describe("when the sites list fails but the cleaner is on site", () => {
+	// The one thing a cleaner must always be able to do is leave. The on-site
+	// card used to sit below an early return for a failed sites load, so losing
+	// signal while checked in hid the timer and the check-out button entirely.
+
+	test("the on-site card still renders, with its way out", async () => {
+		await show({ sites: null, error: "That took too long. Check your signal and try again." }, { active: onSiteAt("Elm Court") });
+
+		expect(screen.getByText("Elm Court")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Check out" })).toBeTruthy();
+		// And the list still says what went wrong.
+		expect(screen.getByText("Couldn't load your sites")).toBeTruthy();
+	});
+
+	test("checking out from there works", async () => {
+		const checkOut = jest.fn();
+		await show({ sites: null, error: "No signal." }, { active: onSiteAt("Elm Court"), checkOut });
+
+		fireEvent.press(screen.getByRole("button", { name: "Check out" }));
+		expect(checkOut).toHaveBeenCalled();
+	});
+
+	test("it renders while the list is still loading too", async () => {
+		// A cold start on a slow connection is the same shape as a failure.
+		await show({ loading: true }, { active: onSiteAt("Elm Court") });
+
+		expect(screen.getByText("Elm Court")).toBeTruthy();
+		expect(screen.getByText("Loading your sites")).toBeTruthy();
+	});
 });

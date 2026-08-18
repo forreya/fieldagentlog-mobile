@@ -27,7 +27,13 @@ export interface AttendanceView {
 	active: AttendanceSession | null;
 	/** The last one closed on this device, for the "checked out" banner. */
 	justClosed: AttendanceSession | null;
+	/** Checking in or out is in flight. */
 	busy: boolean;
+	/** Handing off to the wizard is in flight. Separate from `busy` on purpose:
+	 *  minting a visit needs the server, so with no signal it sits there for the
+	 *  full request timeout. Sharing one flag meant a cleaner who tapped "Start
+	 *  checks" underground could not check out and leave for twenty seconds. */
+	startingChecks: boolean;
 	/** A fix that could not be taken, or a write that failed. */
 	error: string | null;
 	checkIn: (siteId: string, siteName: string) => Promise<void>;
@@ -130,22 +136,24 @@ async function handOffToWizard(session: AttendanceSession): Promise<void> {
  *  below the size budget without hiding anything. */
 function useStartChecks(
 	active: AttendanceSession | null,
-	busy: boolean,
-	setBusy: (value: boolean) => void,
 	setError: (value: string | null) => void,
-): () => Promise<void> {
-	return useCallback(async () => {
-		if (busy || !active) return;
-		setBusy(true);
+): { startChecks: () => Promise<void>; startingChecks: boolean } {
+	const [startingChecks, setStarting] = useState(false);
+
+	const startChecks = useCallback(async () => {
+		if (startingChecks || !active) return;
+		setStarting(true);
 		setError(null);
 		try {
 			await handOffToWizard(active);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Couldn't start the checks.");
 		} finally {
-			setBusy(false);
+			setStarting(false);
 		}
-	}, [active, busy, setBusy, setError]);
+	}, [active, startingChecks, setError]);
+
+	return { startChecks, startingChecks };
 }
 
 export function useAttendance(email: string | null): AttendanceView {
@@ -204,17 +212,20 @@ export function useAttendance(email: string | null): AttendanceView {
 		}
 	}, [active, busy, fix]);
 
-	const startChecks = useStartChecks(active, busy, setBusy, setError);
+	const { startChecks, startingChecks } = useStartChecks(active, setError);
+	const clearError = useCallback(() => setError(null), []);
+	const clearClosed = useCallback(() => setJustClosed(null), []);
 
 	return {
 		active,
 		justClosed,
 		busy,
+		startingChecks,
 		error,
 		checkIn: startVisit,
 		checkOut: endVisit,
 		startChecks,
-		dismissError: useCallback(() => setError(null), []),
-		dismissClosed: useCallback(() => setJustClosed(null), []),
+		dismissError: clearError,
+		dismissClosed: clearClosed,
 	};
 }

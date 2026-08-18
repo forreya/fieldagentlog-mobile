@@ -16,6 +16,8 @@ import { useAuth } from "@/auth/AuthProvider";
 import type { UserRole } from "@/auth/roles";
 import type { DashboardData } from "@/shared/fireData";
 
+import { failureMessage } from "./failureMessage";
+
 /** Keyed by persona: a staff member and an agent see different block sets, and
  *  a shared cache key would hand one the other's list after a re-login. */
 export const dashboardKey = (role: UserRole) => ["dashboard", role] as const;
@@ -54,17 +56,10 @@ export function useDashboard(): DashboardView {
 		// isFetching covers the background refresh; only call it refreshing when
 		// there is something on screen for it to happen behind.
 		refreshing: query.isFetching && query.data !== undefined,
-		error: query.error ? failureMessage(query.error) : null,
+		error: query.error ? failureMessage(query.error, "Something went wrong loading your blocks.") : null,
 		updatedAt: query.dataUpdatedAt || null,
 		refresh: () => void query.refetch(),
 	};
-}
-
-/** ApiError already carries wording written for the person reading it - the
- *  broker's own refusal where it gave one, our copy where it did not. Anything
- *  else is a bug rather than a condition, so it gets a generic line. */
-function failureMessage(error: unknown): string {
-	return error instanceof Error && error.message ? error.message : "Something went wrong loading your blocks.";
 }
 
 /** "Updated 3 minutes ago" - the honest caption on cached data. Exported so it

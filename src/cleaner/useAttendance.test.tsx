@@ -242,6 +242,34 @@ describe("handing off to the checks", () => {
 		expect(router.push).toHaveBeenCalledWith({ pathname: "/v/[token]", params: { token: "fire-token" } });
 	});
 
+	test("checking out is NOT blocked while the handoff is in flight", async () => {
+		// Minting a visit needs the server, so with no signal it sits there for the
+		// full request timeout. Sharing one busy flag meant a cleaner who tapped
+		// Start checks underground could not leave for twenty seconds.
+		let release: (token: string) => void = () => undefined;
+		api.startFireChecks.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+		);
+		const { result } = await onSite();
+
+		await act(async () => {
+			void result.current.startChecks();
+			await Promise.resolve();
+		});
+
+		expect(result.current.startingChecks).toBe(true);
+		expect(result.current.busy).toBe(false);
+
+		// Let it finish so the test does not leave an act scope open.
+		await act(async () => {
+			release("fire-token");
+			await Promise.resolve();
+		});
+	});
+
 	test("the session stays open underneath", async () => {
 		// The timer keeps running while they are in the wizard; checking out is
 		// still owed when they come back.

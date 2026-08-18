@@ -14,14 +14,18 @@
 //   - check-out on an already-closed session returns the stored duration
 // so a retry after a lost response costs one request and changes nothing.
 
+import { ApiError } from "@/api/errors";
 import { deleteAttendance, saveAttendance } from "@/db/attendance";
 import type { AttendanceSession } from "@/db/types";
 import { checkIn, checkOut } from "@/api/cleaner";
 
 import type { SyncSource, SyncTask } from "./engine";
 
-/** True while either end is still owed to the server. */
+/** True while either end is still owed to the server AND there is any prospect
+ *  of it landing. A session that failed permanently is kept - the record is
+ *  still evidence of a shift - but it is never offered again. */
 export function attendanceHasWork(session: AttendanceSession): boolean {
+	if (session.sync_error) return false;
 	if (!session.synced_in) return true;
 	return session.check_out !== null && !session.synced_out;
 }
@@ -31,6 +35,28 @@ export function attendanceHasWork(session: AttendanceSession): boolean {
  * the engine can count it and retry; whatever succeeded is already persisted.
  */
 export async function pushAttendance(session: AttendanceSession): Promise<void> {
+	// Tracks what push() has already persisted. Recording the error against the
+	// ORIGINAL session would throw away a check-in that landed a moment before
+	// the check-out failed, and the queue would then try to send it twice.
+	let latest = session;
+	try {
+		await push(session, (progress) => {
+			latest = progress;
+		});
+	} catch (err) {
+		// A permanent failure is recorded on the session, not just thrown. The
+		// engine does not schedule a retry for one, but every other trigger - app
+		// start, reconnect, foreground - would offer the task again, and a
+		// check-out that can never land would be re-POSTed for the life of the
+		// install. This is the same fix visitSync carries for a spent token.
+		if (err instanceof ApiError && !err.retryable) {
+			await saveAttendance({ ...latest, sync_error: { message: err.message, at: Date.now() } });
+		}
+		throw err;
+	}
+}
+
+async function push(session: AttendanceSession, onProgress: (session: AttendanceSession) => void): Promise<void> {
 	let current = session;
 
 	if (!current.synced_in) {
@@ -41,6 +67,7 @@ export async function pushAttendance(session: AttendanceSession): Promise<void> 
 		// the local row never learns the session id.
 		current = { ...current, server_id: serverId, synced_in: true };
 		await saveAttendance(current);
+		onProgress(current);
 	}
 
 	// Still on site. Nothing more is owed until they leave.
@@ -50,6 +77,7 @@ export async function pushAttendance(session: AttendanceSession): Promise<void> 
 	await checkOut(current.local_id, current.check_out);
 	current = { ...current, synced_out: true };
 	await saveAttendance(current);
+	onProgress(current);
 
 	// Both ends are on the server, which is now the record of what happened.
 	// The local row exists to survive a dead signal, and that job is done.

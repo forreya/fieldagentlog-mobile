@@ -9,6 +9,7 @@ import { FindBar } from "@/components/FindBar";
 import { Note } from "@/components/Note";
 import { OnSiteCard, formatDuration } from "@/components/OnSiteCard";
 import { Screen } from "@/components/Screen";
+import { StaleNote } from "@/components/StaleNote";
 import { SiteCard } from "@/components/SiteCard";
 import { StatusPill } from "@/components/StatusPill";
 import { freshnessLabel } from "@/data/useDashboard";
@@ -67,8 +68,40 @@ interface BodyProps {
 }
 
 function Body({ sites, attendance, duties, checksSubmitted }: BodyProps) {
-	const { sites: data, loading, refreshing, error, updatedAt, refresh } = sites;
-	const find = useFind(data ?? NO_SITES);
+	const find = useFind(sites.sites ?? NO_SITES);
+
+	return (
+		<ScrollView
+			contentContainerStyle={styles.list}
+			refreshControl={<RefreshControl refreshing={sites.refreshing} onRefresh={sites.refresh} tintColor={colors.signal} />}
+		>
+			{/* Everything above the list is LOCAL state, so it renders whatever the
+			    server is doing. This used to sit below an early return for a failed
+			    sites load, which meant a cleaner who lost signal while checked in
+			    could not see their timer or the button to check out - the one thing
+			    they must always be able to do. */}
+			{checksSubmitted.hit ? (
+				<Banner
+					tone="ok"
+					text={`Fire-safety checks submitted - they're in the site's fire logbook.${
+						attendance.active ? " You're still checked in here: check out below when you leave." : ""
+					}`}
+					onDismiss={checksSubmitted.dismiss}
+				/>
+			) : null}
+			<AttendanceBanners attendance={attendance} />
+			<OnSite attendance={attendance} duties={duties} />
+
+			<SiteList sites={sites} find={find} attendance={attendance} />
+		</ScrollView>
+	);
+}
+
+/** The list of sites, and the three states it can be in. Separate from the
+ *  attendance UI above it: one is the server's answer, the other is the
+ *  device's own, and a failure in the first must not hide the second. */
+function SiteList({ sites, find, attendance }: { sites: SitesView; find: ReturnType<typeof useFind<CleanerSite>>; attendance: AttendanceView }) {
+	const { sites: data, loading, error, updatedAt, refresh } = sites;
 
 	if (loading) return <Note title="Loading your sites" body="This only takes a moment." />;
 
@@ -83,62 +116,46 @@ function Body({ sites, attendance, duties, checksSubmitted }: BodyProps) {
 		);
 	}
 
-	return (
-		<ScrollView
-			contentContainerStyle={styles.list}
-			refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.signal} />}
-		>
-			<Summary sites={data} showStamp={!error} updatedAt={updatedAt} />
-			{error ? <Stale message={error} updatedAt={updatedAt} /> : null}
+	if (data.length === 0) {
+		return (
+			<Note
+				title="No sites yet"
+				body="When your cleaning company is assigned to a building, it appears here. Ask your managing agent if you expected one."
+			/>
+		);
+	}
 
-			{checksSubmitted.hit ? (
-				<Banner
-					tone="ok"
-					text={`Fire-safety checks submitted - they're in the site's fire logbook.${
-						attendance.active ? " You're still checked in here: check out below when you leave." : ""
-					}`}
-					onDismiss={checksSubmitted.dismiss}
+	return (
+		<>
+			<Summary sites={data} showStamp={!error} updatedAt={updatedAt} />
+			{error ? <StaleNote message={error} updatedAt={updatedAt} /> : null}
+			{data.length > 3 ? (
+				<FindBar
+					query={find.query}
+					onQuery={find.setQuery}
+					near={find.near}
+					onToggleNear={find.toggleNear}
+					error={find.error}
+					showing={{ shown: find.results.length, total: data.length }}
 				/>
 			) : null}
-			<AttendanceBanners attendance={attendance} />
-			<OnSite attendance={attendance} duties={duties} />
-
-			{data.length === 0 ? (
-				<Note
-					title="No sites yet"
-					body="When your cleaning company is assigned to a building, it appears here. Ask your managing agent if you expected one."
-				/>
+			{find.results.length === 0 ? (
+				<Note title="Nothing matches that" body="Try part of the name, the street or the postcode." />
 			) : (
-				<>
-					{data.length > 3 ? (
-						<FindBar
-							query={find.query}
-							onQuery={find.setQuery}
-							near={find.near}
-							onToggleNear={find.toggleNear}
-							error={find.error}
-							showing={{ shown: find.results.length, total: data.length }}
-						/>
-					) : null}
-					{find.results.length === 0 ? (
-						<Note title="Nothing matches that" body="Try part of the name, the street or the postcode." />
-					) : (
-						find.results.map((site) => (
-							<SiteCard
-								key={site.id}
-								site={site}
-								distanceKm={find.distances.get(site.id)}
-								// One site at a time. Checking in somewhere else while
-								// already on site would leave two open sessions and no
-								// honest answer for where the person actually was.
-								disabled={attendance.active !== null || attendance.busy}
-								onOpen={() => void attendance.checkIn(site.id, site.name)}
-							/>
-						))
-					)}
-				</>
+				find.results.map((site) => (
+					<SiteCard
+						key={site.id}
+						site={site}
+						distanceKm={find.distances.get(site.id)}
+						// One site at a time. Checking in somewhere else while already
+						// on site would leave two open sessions and no honest answer
+						// for where the person actually was.
+						disabled={attendance.active !== null || attendance.busy || attendance.startingChecks}
+						onOpen={() => void attendance.checkIn(site.id, site.name)}
+					/>
+				))
 			)}
-		</ScrollView>
+		</>
 	);
 }
 
@@ -167,7 +184,7 @@ function OnSite({ attendance, duties }: { attendance: AttendanceView; duties: Du
 	return (
 		<>
 			<OnSiteCard session={attendance.active} busy={attendance.busy} onCheckOut={() => void attendance.checkOut()} />
-			<DutiesCard duties={duties.duties} busy={attendance.busy} onStart={() => void attendance.startChecks()} />
+			<DutiesCard duties={duties.duties} busy={attendance.startingChecks} onStart={() => void attendance.startChecks()} />
 		</>
 	);
 }
@@ -190,18 +207,6 @@ function Summary({ sites, showStamp, updatedAt }: { sites: CleanerSite[]; showSt
 	);
 }
 
-/** The refresh failed but there is still a usable list underneath. */
-function Stale({ message, updatedAt }: { message: string; updatedAt: number | null }) {
-	return (
-		<View style={styles.stale}>
-			<Text style={styles.staleTitle}>Showing what was saved here</Text>
-			<Text style={styles.staleBody}>
-				{message} {freshnessLabel(updatedAt)}.
-			</Text>
-		</View>
-	);
-}
-
 const styles = StyleSheet.create({
 	list: { gap: space.s3, paddingBottom: space.s6 },
 	summary: { gap: 2 },
@@ -209,7 +214,4 @@ const styles = StyleSheet.create({
 	strong: { fontFamily: fonts.displayHeavy },
 	due: { fontFamily: fonts.bodyMedium, color: colors.signalDeep },
 	stamp: { fontFamily: fonts.body, fontSize: 13, color: colors.plateMuted },
-	stale: { backgroundColor: colors.naTint, borderLeftWidth: 4, borderLeftColor: colors.sevMedium, borderRadius: 8, padding: space.s3, gap: 2 },
-	staleTitle: { fontFamily: fonts.displayHeavy, fontSize: 15, color: colors.plateInk },
-	staleBody: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.plateInk },
 });

@@ -145,3 +145,52 @@ describe("the source", () => {
 		expect(await source.pending()).toEqual([]);
 	});
 });
+
+describe("a failure retrying cannot fix", () => {
+	// Reachable in production: cleaner_attendance cascades on block deletion, so
+	// a block removed while somebody is checked in leaves a check-out that can
+	// only ever 404. Without this the queue re-POSTs it on every app start,
+	// every reconnect and every foreground, forever.
+	// "invalid" is the kind for a request the server refused; retryable is
+	// derived from the kind, not passed, so this really is non-retryable.
+	const permanent = () => new ApiError("invalid", "No check-in found for this visit.");
+
+	test("is recorded on the session and never offered again", async () => {
+		api.checkOut.mockRejectedValue(permanent());
+
+		await expect(pushAttendance(session({ synced_in: true, server_id: "s1", check_out: OUT }))).rejects.toThrow();
+
+		const stored = saved().at(-1) as AttendanceSession;
+		expect(stored.sync_error?.message).toBe("No check-in found for this visit.");
+		expect(attendanceHasWork(stored)).toBe(false);
+	});
+
+	test("a check-in that landed first is not thrown away", async () => {
+		// The subtle one: recording the error against the ORIGINAL session would
+		// lose synced_in, and the next pass would send the check-in a second time.
+		api.checkOut.mockRejectedValue(permanent());
+
+		await expect(pushAttendance(session({ check_out: OUT }))).rejects.toThrow();
+
+		const stored = saved().at(-1) as AttendanceSession;
+		expect(stored.synced_in).toBe(true);
+		expect(stored.server_id).toBe("server-1");
+		expect(stored.sync_error).toBeTruthy();
+	});
+
+	test("a retryable failure is NOT recorded - it should keep trying", async () => {
+		api.checkOut.mockRejectedValue(new ApiError("network", "No signal."));
+
+		await expect(pushAttendance(session({ synced_in: true, check_out: OUT }))).rejects.toThrow();
+
+		expect(saved().every((s) => !s.sync_error)).toBe(true);
+	});
+
+	test("the record is kept, not deleted - it is still evidence of a shift", async () => {
+		api.checkOut.mockRejectedValue(permanent());
+
+		await expect(pushAttendance(session({ synced_in: true, check_out: OUT }))).rejects.toThrow();
+
+		expect(db.deleteAttendance).not.toHaveBeenCalled();
+	});
+});

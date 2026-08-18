@@ -7,6 +7,7 @@ import { FindBar } from "@/components/FindBar";
 import { Note } from "@/components/Note";
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
+import { StaleNote } from "@/components/StaleNote";
 import { StatusPill } from "@/components/StatusPill";
 import { useFind } from "@/data/useFind";
 import { freshnessLabel, useDashboard, type DashboardView } from "@/data/useDashboard";
@@ -79,7 +80,7 @@ function Body({ dashboard, staff }: { dashboard: DashboardView; staff: boolean }
 			{/* One statement of freshness per screen: the stale notice carries it
 			    when there is one, otherwise the summary does. */}
 			<Summary dashboard={dashboard} showStamp={!error} />
-			{error ? <Stale message={error} updatedAt={updatedAt} /> : null}
+			{error ? <StaleNote message={error} updatedAt={updatedAt} /> : null}
 			{data.blocks.length === 0 ? (
 				<Note
 					title={staff ? "No blocks yet" : "No blocks assigned"}
@@ -135,18 +136,6 @@ function Summary({ dashboard, showStamp }: { dashboard: DashboardView; showStamp
 	);
 }
 
-/** The refresh failed but there is still a usable list underneath. */
-function Stale({ message, updatedAt }: { message: string; updatedAt: number | null }) {
-	return (
-		<View style={styles.stale}>
-			<Text style={styles.staleTitle}>Showing what was saved here</Text>
-			<Text style={styles.staleBody}>
-				{message} {freshnessLabel(updatedAt)}.
-			</Text>
-		</View>
-	);
-}
-
 const styles = StyleSheet.create({
 	grow: { flex: 1 },
 	list: { gap: space.s3, paddingBottom: space.s6 },
@@ -155,7 +144,4 @@ const styles = StyleSheet.create({
 	strong: { fontFamily: fonts.displayHeavy },
 	overdue: { fontFamily: fonts.bodyMedium, color: colors.fail },
 	stamp: { fontFamily: fonts.body, fontSize: 13, color: colors.plateMuted },
-	stale: { backgroundColor: colors.naTint, borderLeftWidth: 4, borderLeftColor: colors.sevMedium, borderRadius: 8, padding: space.s3, gap: 2 },
-	staleTitle: { fontFamily: fonts.displayHeavy, fontSize: 15, color: colors.plateInk },
-	staleBody: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.plateInk },
 });

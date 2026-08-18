@@ -12,6 +12,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { loadCleanerSites, type CleanerSite } from "@/api/cleaner";
 
+import { failureMessage } from "./failureMessage";
+
 export const sitesKey = ["cleaner-sites"] as const;
 
 export interface SitesView {
@@ -34,15 +36,8 @@ export function useSites(): SitesView {
 		sites: query.data ?? null,
 		loading: query.isPending,
 		refreshing: query.isFetching && query.data !== undefined,
-		error: query.error ? failureMessage(query.error) : null,
+		error: query.error ? failureMessage(query.error, "Something went wrong loading your sites.") : null,
 		updatedAt: query.dataUpdatedAt || null,
 		refresh: () => void query.refetch(),
 	};
-}
-
-/** The broker's own refusal where it gave one - "Your account is not active.
- *  Ask your managing agent." is better than anything we could write, and it is
- *  the message a cleaner most needs to see. */
-function failureMessage(error: unknown): string {
-	return error instanceof Error && error.message ? error.message : "Something went wrong loading your sites.";
 }
