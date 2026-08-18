@@ -79,7 +79,16 @@ export async function downscale(uri: string, maxEdge: number = MAX_EDGE): Promis
  * Capture a photo for one check and queue it. Returns what happened so the
  * screen can tell the difference between "changed their mind" and "broken".
  */
-export async function capturePhoto(token: string, checkId: string, source: CaptureSource): Promise<CaptureOutcome> {
+/**
+ * Permission, picker, downscale, store. Everything a photo needs before anyone
+ * decides what it is FOR.
+ *
+ * Split out because a site report attaches photos to itself rather than to the
+ * visit queue: same pipeline, different destination. Duplicating it would mean
+ * two places to get the downscale wrong, and the downscale is what keeps a
+ * field worker's data bill down.
+ */
+export async function pickAndStore(source: CaptureSource, fallbackName: string): Promise<PickOutcome> {
 	try {
 		if (!(await requestPermission(source))) return { status: "denied", source };
 
@@ -88,14 +97,28 @@ export async function capturePhoto(token: string, checkId: string, source: Captu
 
 		const asset = picked.assets[0];
 		const shrunk = await downscale(asset.uri);
+		const name = asset.fileName?.trim() || fallbackName;
 
-		const name = asset.fileName?.trim() || `check-${checkId}.jpg`;
-		const stored = await storePhoto({ uri: shrunk.uri, name, type: "image/jpeg" });
+		return { status: "stored", file: await storePhoto({ uri: shrunk.uri, name, type: "image/jpeg" }) };
+	} catch (err) {
+		return { status: "failed", message: err instanceof Error ? err.message : "Couldn't add that photo." };
+	}
+}
 
+export type PickOutcome =
+	| { status: "stored"; file: LocalFile }
+	| { status: "denied"; source: CaptureSource }
+	| { status: "cancelled" }
+	| { status: "failed"; message: string };
+
+export async function capturePhoto(token: string, checkId: string, source: CaptureSource): Promise<CaptureOutcome> {
+	const outcome = await pickAndStore(source, `check-${checkId}.jpg`);
+	if (outcome.status !== "stored") return outcome;
+
+	try {
 		const localId = uuid();
-		await addPendingPhoto({ local_id: localId, token, check_id: checkId, file: stored, ref: null, created_at: Date.now() });
-
-		return { status: "captured", localId, file: stored };
+		await addPendingPhoto({ local_id: localId, token, check_id: checkId, file: outcome.file, ref: null, created_at: Date.now() });
+		return { status: "captured", localId, file: outcome.file };
 	} catch (err) {
 		return { status: "failed", message: err instanceof Error ? err.message : "Couldn't add that photo." };
 	}

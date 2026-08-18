@@ -140,3 +140,39 @@ export function positionMessage(outcome: PositionOutcome): string | null {
 			return outcome.message;
 	}
 }
+
+// ── The report fix ──────────────────────────────────────────────────────────
+
+/** Short: a bin store rarely has a fix, and nobody should wait in one. */
+const REPORT_FIX_TIMEOUT_MS = 8_000;
+
+/**
+ * A position for a site report, if one happens to be available.
+ *
+ * Best-effort in the strongest sense: this never throws, never blocks for long,
+ * and returns null rather than delaying the report. Location corroborates that
+ * the reporter was where they say, which is useful - but a report is worth far
+ * more than its geotag, and the person has usually walked away from the problem
+ * by the time they are typing.
+ *
+ * Low accuracy on purpose. "Which building" is the question; metre-level
+ * precision would cost battery and time to answer something nobody asked.
+ */
+export async function captureReportFix(): Promise<GeoPoint | null> {
+	try {
+		if (!(await Location.hasServicesEnabledAsync())) return null;
+		const { granted } = await Location.requestForegroundPermissionsAsync();
+		if (!granted) return null;
+
+		const position = await withTimeout(Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }), REPORT_FIX_TIMEOUT_MS);
+		return {
+			lat: position.coords.latitude,
+			lng: position.coords.longitude,
+			accuracy: Number.isFinite(position.coords.accuracy) ? (position.coords.accuracy as number) : 9999,
+			at: position.timestamp || Date.now(),
+		};
+	} catch {
+		// Denied, switched off, indoors, or simply slow. The report goes without.
+		return null;
+	}
+}

@@ -20,6 +20,9 @@ interface Props {
 	keyboardType?: KeyboardTypeOptions;
 	inputMode?: "url" | "email";
 	autoCapitalize?: "none" | "words" | "sentences";
+	/** Hard cap, matching whatever column this ends up in. Silently stops typing
+	 *  rather than rejecting on submit, which is the kinder end of the trade. */
+	maxLength?: number;
 	returnKeyType?: ReturnKeyTypeOptions;
 	onSubmit?: () => void;
 	/** Falls back to the label; required when there is no visible label. */
@@ -48,6 +51,7 @@ export function TextField({
 	keyboardType,
 	inputMode,
 	autoCapitalize = "sentences",
+	maxLength,
 	returnKeyType,
 	onSubmit,
 	accessibilityLabel,
@@ -69,6 +73,7 @@ export function TextField({
 				keyboardType={keyboardType}
 				inputMode={inputMode}
 				autoCapitalize={autoCapitalize}
+				maxLength={maxLength}
 				autoCorrect={false}
 				spellCheck={false}
 				multiline={multiline}

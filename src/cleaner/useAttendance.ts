@@ -156,6 +156,38 @@ function useStartChecks(
 	return { startChecks, startingChecks };
 }
 
+interface EndVisitDeps {
+	active: AttendanceSession | null;
+	busy: boolean;
+	fix: () => Promise<GeoPoint | null>;
+	setActive: (session: AttendanceSession | null) => void;
+	setBusy: (value: boolean) => void;
+	setError: (value: string | null) => void;
+	setJustClosed: (session: AttendanceSession | null) => void;
+}
+
+/** Leaving site. Lifted out of the hook for the size budget; the shape mirrors
+ *  useStartChecks so the three actions read alike. */
+function useEndVisit({ active, busy, fix, setActive, setBusy, setError, setJustClosed }: EndVisitDeps): () => Promise<void> {
+	return useCallback(async () => {
+		if (busy || !active) return;
+		setBusy(true);
+		setError(null);
+		try {
+			const point = await fix();
+			if (!point) return;
+
+			const closed: AttendanceSession = { ...active, check_out: point };
+			await saveAttendance(closed);
+			setActive(null);
+			setJustClosed(closed);
+			void syncEngine.sync("check-out");
+		} finally {
+			setBusy(false);
+		}
+	}, [active, busy, fix, setActive, setBusy, setError, setJustClosed]);
+}
+
 export function useAttendance(email: string | null): AttendanceView {
 	const [active, setActive] = useState<AttendanceSession | null>(null);
 	const [justClosed, setJustClosed] = useState<AttendanceSession | null>(null);
@@ -194,24 +226,7 @@ export function useAttendance(email: string | null): AttendanceView {
 		[active, busy, email, fix],
 	);
 
-	const endVisit = useCallback(async () => {
-		if (busy || !active) return;
-		setBusy(true);
-		setError(null);
-		try {
-			const point = await fix();
-			if (!point) return;
-
-			const closed: AttendanceSession = { ...active, check_out: point };
-			await saveAttendance(closed);
-			setActive(null);
-			setJustClosed(closed);
-			void syncEngine.sync("check-out");
-		} finally {
-			setBusy(false);
-		}
-	}, [active, busy, fix]);
-
+	const endVisit = useEndVisit({ active, busy, fix, setActive, setBusy, setError, setJustClosed });
 	const { startChecks, startingChecks } = useStartChecks(active, setError);
 	const clearError = useCallback(() => setError(null), []);
 	const clearClosed = useCallback(() => setJustClosed(null), []);
