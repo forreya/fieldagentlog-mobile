@@ -90,6 +90,19 @@ export function deadEndReasonFromVisitStatus(status: string): DeadEndReason {
 	return "unknown";
 }
 
+/**
+ * Supabase answers 402 when the organization is over its quota and the spend
+ * cap is on: the project is restricted until usage resets or the cap is lifted.
+ *
+ * It is nobody-on-site's fault and nothing they can act on, and - the part that
+ * matters - it clears on its own. Left to fall through with the other 4xx it
+ * became `invalid` on the broker path and a dead end on the token path, so a
+ * restricted afternoon would have written off every queued visit, check-in and
+ * report as permanently failed across every device. Same shape as the auth bug
+ * that poisoned two real reports; retryable, and it must stay retryable.
+ */
+const RESTRICTED = 402;
+
 /** Turn a non-OK HTTP status into the right kind of ApiError. */
 export function classifyStatus(status: number): ApiError {
 	if (status >= 500) {
@@ -97,6 +110,9 @@ export function classifyStatus(status: number): ApiError {
 	}
 	if (status === 408 || status === 429) {
 		return new ApiError("network", "The server is busy. Try again in a moment.", { status });
+	}
+	if (status === RESTRICTED) {
+		return new ApiError("server", "The service is temporarily unavailable. Try again shortly.", { status });
 	}
 	// Any other 4xx on a token-gated endpoint means the link itself is no good.
 	return new ApiError("dead_end", "This link can't be used.", { status, reason: deadEndReasonFromStatus(status) });
@@ -154,6 +170,9 @@ export function classifyBrokerStatus(status: number, body?: unknown): ApiError {
 	}
 	if (status === 408 || status === 429) {
 		return new ApiError("network", said ?? "The server is busy. Try again in a moment.", { status });
+	}
+	if (status === RESTRICTED) {
+		return new ApiError("server", said ?? "The service is temporarily unavailable. Your work is saved and will send later.", { status });
 	}
 	if (status >= 500) {
 		return new ApiError("server", said ?? "The server had a problem. Try again in a moment.", { status });

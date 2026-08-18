@@ -150,3 +150,34 @@ describe("unfixable", () => {
 		expect(unfixable(null)).toBe(false);
 	});
 });
+
+// A restricted Supabase organization answers 402.
+//
+// It means "over quota with the spend cap on" - the project comes back when
+// usage resets or the cap is lifted. Treated as just another 4xx it became
+// `invalid` on the broker path, which unfixable() calls permanent, so a
+// restricted afternoon would have marked every queued visit, check-in and
+// report dead on every device at once. Nothing would have re-sent them.
+describe("a restricted organization (402)", () => {
+	test("is retryable on the broker path, not a permanent failure", () => {
+		const error = classifyBrokerStatus(402);
+
+		expect(error.kind).toBe("server");
+		expect(error.retryable).toBe(true);
+		expect(unfixable(error)).toBe(false);
+	});
+
+	// The token path is worse if this is wrong: a dead end is terminal, so an
+	// inspector would be told their link is no good when it is perfectly valid.
+	test("is not a dead end on the keyless visit path", () => {
+		const error = classifyStatus(402);
+
+		expect(error.kind).toBe("server");
+		expect(error.retryable).toBe(true);
+	});
+
+	test("says something a person on site can act on", () => {
+		expect(classifyStatus(402).message).not.toMatch(/link/i);
+		expect(classifyBrokerStatus(402).message).toMatch(/saved/i);
+	});
+});
