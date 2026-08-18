@@ -7,7 +7,10 @@
 // physical metaphor and a dark variant would undo it. app.json pins
 // userInterfaceStyle to "light" so the OS never inverts it.
 //
-// Keep in step with ../../fieldagent/src/styles/tokens.css.
+// Keep in step with ../../fieldagent/src/styles/tokens.css - with one knowing
+// exception, marked below, where the web's value does not clear WCAG AA at the
+// size this app renders it. The web has the same defect; fixing it there is a
+// separate change in a separate repo.
 
 export const colors = {
 	// Slate housing
@@ -32,10 +35,16 @@ export const colors = {
 	signalDeep: "#3E6784",
 	signalTint: "#E4EEF5",
 
-	// Verdicts (always paired with an icon + word)
-	pass: "#1E8E3E",
+	// Verdicts (always paired with an icon + word).
+	//
+	// DIVERGES FROM THE WEB, deliberately. #1E8E3E managed 3.70:1 on passTint and
+	// 4.21:1 on white, and #D7263D 4.16:1 on failTint - all short of AA's 4.5 for
+	// text this size (15px and 14px; WCAG only relaxes to 3.0 at 18.66px bold).
+	// Darkened by the smallest amount that clears it, so the hues still read as
+	// the same green and red.
+	pass: "#1B7E37",
 	passTint: "#E6F4EA",
-	fail: "#D7263D",
+	fail: "#CD243A",
 	failTint: "#FBE6E9",
 	na: "#5C6772",
 	naTint: "#ECEFF2",
@@ -43,7 +52,13 @@ export const colors = {
 	// Sync pill states
 	syncOnline: "#7FD49B",
 
-	// Severity ramp: low -> intolerable
+	// Severity ramp: low -> intolerable.
+	//
+	// The hues are the web's, unchanged. What changed is the text on top: white
+	// on the amber was 2.47:1, which is the worst number in the palette by some
+	// way. Amber is amber because it means something, so rather than muddy it
+	// into brown the chip picks the readable text colour for its own background
+	// - see severityTextColour.
 	sevLow: "#5C6772",
 	sevMedium: "#E8910C",
 	sevHigh: "#E8590C",

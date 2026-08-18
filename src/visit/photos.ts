@@ -100,8 +100,11 @@ export async function pickAndStore(source: CaptureSource, fallbackName: string):
 		const name = asset.fileName?.trim() || fallbackName;
 
 		return { status: "stored", file: await storePhoto({ uri: shrunk.uri, name, type: "image/jpeg" }) };
-	} catch (err) {
-		return { status: "failed", message: err instanceof Error ? err.message : "Couldn't add that photo." };
+	} catch {
+		// Not err.message: what lands here is expo-image-picker or the file
+		// system talking ("The operation couldn't be completed. (OSStatus error
+		// -1.)"), which names nothing a person can act on.
+		return { status: "failed", message: "Couldn't add that photo. Try again." };
 	}
 }
 
@@ -119,8 +122,11 @@ export async function capturePhoto(token: string, checkId: string, source: Captu
 		const localId = uuid();
 		await addPendingPhoto({ local_id: localId, token, check_id: checkId, file: outcome.file, ref: null, created_at: Date.now() });
 		return { status: "captured", localId, file: outcome.file };
-	} catch (err) {
-		return { status: "failed", message: err instanceof Error ? err.message : "Couldn't add that photo." };
+	} catch {
+		// Not err.message: what lands here is expo-image-picker or the file
+		// system talking ("The operation couldn't be completed. (OSStatus error
+		// -1.)"), which names nothing a person can act on.
+		return { status: "failed", message: "Couldn't add that photo. Try again." };
 	}
 }
 

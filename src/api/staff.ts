@@ -10,6 +10,7 @@
 import * as Crypto from "expo-crypto";
 import type { User } from "@supabase/supabase-js";
 
+import { ApiError } from "@/api/errors";
 import { getSupabase } from "@/auth/supabase";
 import { loadDashboard, type DashboardData } from "@/shared/fireData";
 
@@ -82,7 +83,25 @@ export async function staffStartVisit(user: User, block: { id: string; organizat
 			inspector_email: user.email ?? null,
 			created_by: user.id,
 		});
-	if (error) throw new Error(error.message);
+	// PostgREST's own wording, not ours: an RLS refusal reads "new row violates
+	// row-level security policy for table \"fire_visits\"". True, and no use at
+	// all to someone standing outside a building. The status carries the meaning
+	// and classifyStatus already has copy for each one.
+	if (error) throw brokerError(error);
 
 	return raw;
+}
+
+/**
+ * A Supabase/PostgREST error turned into something sayable.
+ *
+ * 42501 is RLS - the one a staff member can actually hit, by opening a block
+ * their membership no longer covers. Everything else is a fault rather than a
+ * condition, and says so without naming a table.
+ */
+function brokerError(error: { code?: string; message?: string }): ApiError {
+	if (error.code === "42501") {
+		return new ApiError("forbidden", "You don't have access to that block. Ask whoever manages your account.");
+	}
+	return new ApiError("server", "Couldn't start the checklist. Try again in a moment.");
 }

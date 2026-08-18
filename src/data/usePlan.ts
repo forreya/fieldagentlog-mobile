@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { geocodePostcodes } from "@/lib/geocode";
 import { buildPlan, needsVisit, type PlanResult } from "@/lib/plan";
 import type { BlockWithJobs } from "@/shared/fireData";
+import { failureMessage } from "./failureMessage";
 
 export interface PlanView {
 	plan: PlanResult | null;
@@ -40,7 +41,7 @@ export function usePlan(blocks: BlockWithJobs[]): PlanView {
 	return {
 		plan: query.data ?? null,
 		loading: query.isPending,
-		error: query.error instanceof Error ? query.error.message : query.error ? "Couldn't plan visits." : null,
+		error: query.error ? failureMessage(query.error, "Couldn't plan visits.") : null,
 		refresh: () => void query.refetch(),
 	};
 }

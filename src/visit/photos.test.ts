@@ -145,7 +145,10 @@ describe("capturePhoto", () => {
 		});
 
 		const outcome = await capturePhoto("tok", "c1", "camera");
-		expect(outcome).toEqual({ status: "failed", message: "decoder gave up" });
+		// Our copy, not the thrown one: what actually lands in that catch is the
+		// image decoder or the file system, and "decoder gave up" is the polite
+		// end of what they say.
+		expect(outcome).toEqual({ status: "failed", message: "Couldn't add that photo. Try again." });
 		expect(queue).not.toHaveBeenCalled();
 	});
 

@@ -7,7 +7,16 @@
 //
 // Anything else is a bug rather than a condition, and gets the caller's
 // fallback: a screen saying what it could not load beats a stack trace.
+//
+// That last paragraph described the intent from the start; the check was
+// `instanceof Error`, which is every thrown thing in JavaScript. A PostgREST
+// refusal ("new row violates row-level security policy for table
+// \"fire_visits\"") reached the screen through here, because a Supabase error
+// is an Error like any other. Only OUR errors are vetted copy, and ApiError is
+// what marks them.
+
+import { ApiError } from "@/api/errors";
 
 export function failureMessage(error: unknown, fallback: string): string {
-	return error instanceof Error && error.message ? error.message : fallback;
+	return error instanceof ApiError && error.message ? error.message : fallback;
 }

@@ -8,7 +8,9 @@ import * as Crypto from "expo-crypto";
 import { inspectorName, staffStartVisit } from "./staff";
 
 // `mock`-prefixed so the hoisted factory may close over it.
-const mockInsert = jest.fn(async (_row: Record<string, unknown>) => ({ error: null as { message: string } | null }));
+// PostgREST errors carry a code as well as a message, and the code is what
+// decides which of them a person is allowed to read.
+const mockInsert = jest.fn(async (_row: Record<string, unknown>) => ({ error: null as { code?: string; message: string } | null }));
 jest.mock("@/auth/supabase", () => ({ getSupabase: () => ({ from: () => ({ insert: mockInsert }) }) }));
 
 const user = { id: "u1", email: "sam@company.co.uk", user_metadata: {} } as unknown as User;
@@ -80,8 +82,19 @@ test("the token comes from the platform CSPRNG, 32 bytes of it", async () => {
 
 test("an RLS refusal surfaces as an error rather than a broken link", async () => {
 	// A staff member with no role on the block: the correct outcome is a
-	// refusal, not a visit nobody can open.
-	mockInsert.mockResolvedValue({ error: { message: "new row violates row-level security policy" } });
+	// refusal, not a visit nobody can open. 42501 is what PostgREST sends.
+	mockInsert.mockResolvedValue({ error: { code: "42501", message: 'new row violates row-level security policy for table "fire_visits"' } });
 
-	await expect(staffStartVisit(user, block, NOW)).rejects.toThrow(/row-level security/);
+	// Deliberately NOT the database's wording. This test used to assert the
+	// screen showed "row-level security", which is how the leak stayed put.
+	await expect(staffStartVisit(user, block, NOW)).rejects.toThrow("You don't have access to that block. Ask whoever manages your account.");
+});
+
+// Anything that is not an RLS refusal is a fault, not a condition. It still has
+// to say something, and it must not name a table.
+test("any other database failure says something a person can act on", async () => {
+	mockInsert.mockResolvedValue({ error: { code: "23503", message: 'insert or update on table "fire_visits" violates foreign key constraint' } });
+
+	await expect(staffStartVisit(user, block, NOW)).rejects.toThrow("Couldn't start the checklist. Try again in a moment.");
+	await expect(staffStartVisit(user, block, NOW)).rejects.not.toThrow(/fire_visits|constraint/);
 });

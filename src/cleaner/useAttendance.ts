@@ -14,6 +14,7 @@ import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 
 import { startFireChecks } from "@/api/cleaner";
+import { failureMessage } from "@/data/failureMessage";
 import { allAttendance, saveAttendance } from "@/db/attendance";
 import type { AttendanceSession, GeoPoint } from "@/db/types";
 import { uuid } from "@/lib/id";
@@ -147,7 +148,7 @@ function useStartChecks(
 		try {
 			await handOffToWizard(active);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Couldn't start the checks.");
+			setError(failureMessage(err, "Couldn't start the checks. Try again in a moment."));
 		} finally {
 			setStarting(false);
 		}

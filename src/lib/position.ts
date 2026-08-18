@@ -47,10 +47,13 @@ export async function capturePosition(): Promise<PositionOutcome> {
 		const { granted } = await Location.requestForegroundPermissionsAsync();
 		if (!granted) return { status: "denied" };
 
-		const position = await withTimeout(Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }), TIMEOUT_MS);
+		const position = await withTimeout(Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }), TIMEOUT_MS, new TimeoutError());
 		return { status: "ok", point: { lat: position.coords.latitude, lng: position.coords.longitude } };
 	} catch (err) {
-		return { status: "failed", message: err instanceof Error ? err.message : "Couldn't get your location." };
+		// Only our own timeout copy is worth showing. Anything else here is
+		// expo-location or the OS, whose wording names APIs rather than actions.
+		if (err instanceof TimeoutError) return { status: "failed", message: "Location is taking too long. Try again outside." };
+		return { status: "failed", message: "Couldn't get your location." };
 	}
 }
 
@@ -105,7 +108,7 @@ export async function captureFix(): Promise<FixOutcome> {
 		};
 	} catch (err) {
 		if (err instanceof TimeoutError) return { status: "timeout" };
-		return { status: "failed", message: err instanceof Error ? err.message : "Couldn't get your location." };
+		return { status: "failed", message: "Couldn't get your location." };
 	}
 }
 

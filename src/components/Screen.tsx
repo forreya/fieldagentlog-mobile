@@ -18,6 +18,20 @@ interface Props {
 }
 
 /**
+ * How far the app bar's own text is allowed to grow.
+ *
+ * Everything in the body scales without limit - that is the point of dynamic
+ * type. The bar is different: it is a fixed-height strip already sharing a row
+ * with the sync pill and a menu, and at the accessibility sizes the title
+ * collapsed to "Ce..." and the subtitle to "Check...", so the block being
+ * inspected became unreadable at exactly the setting meant to help.
+ *
+ * 1.3 is where the longest real block name still fits on one line. The body
+ * text below it is untouched.
+ */
+const BAR_TEXT_SCALE = 1.3;
+
+/**
  * The app frame: graphite housing (app bar and bottom bar) around a bright
  * plate working surface. Safe-area insets are handled here so no screen has to
  * think about notches or home indicators.
@@ -29,11 +43,11 @@ export function Screen({ title, sub, action, signedInAs, footer, scroll = true, 
 			<SafeAreaView edges={["top"]} style={styles.bar}>
 				<View style={styles.barRow}>
 					<View style={styles.barTitles}>
-						<Text numberOfLines={1} style={styles.title}>
+						<Text numberOfLines={1} maxFontSizeMultiplier={BAR_TEXT_SCALE} style={styles.title}>
 							{title}
 						</Text>
 						{sub ? (
-							<Text numberOfLines={1} style={styles.sub}>
+							<Text numberOfLines={1} maxFontSizeMultiplier={BAR_TEXT_SCALE} style={styles.sub}>
 								{sub}
 							</Text>
 						) : null}
@@ -41,7 +55,7 @@ export function Screen({ title, sub, action, signedInAs, footer, scroll = true, 
 					{action}
 				</View>
 				{signedInAs ? (
-					<Text numberOfLines={1} style={styles.who}>
+					<Text numberOfLines={1} maxFontSizeMultiplier={BAR_TEXT_SCALE} style={styles.who}>
 						Signed in as {signedInAs}
 					</Text>
 				) : null}

@@ -16,6 +16,7 @@ import { router } from "expo-router";
 
 import * as handoffModule from "./handoff";
 import { openSession, useAttendance } from "./useAttendance";
+import { ApiError } from "@/api/errors";
 
 jest.mock("@/db/attendance");
 jest.mock("expo-crypto", () => {
@@ -283,7 +284,10 @@ describe("handing off to the checks", () => {
 
 	test("a broker refusal is shown and nothing is navigated to", async () => {
 		// "No fire-safety checks are due here." is a 409 the broker words itself.
-		api.startFireChecks.mockRejectedValue(new Error("No fire-safety checks are due here."));
+		// An ApiError, because that is what the broker layer throws. The fake used
+		// to be a plain Error, which only passed while failureMessage let any
+		// Error's text through - including a stack-trace-shaped one.
+		api.startFireChecks.mockRejectedValue(new ApiError("invalid", "No fire-safety checks are due here.", { status: 409 }));
 		const { result } = await onSite();
 
 		await act(async () => void (await result.current.startChecks()));

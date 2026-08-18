@@ -13,6 +13,7 @@ import { Card, Screen } from "@/components/Screen";
 import { StatusPill } from "@/components/StatusPill";
 import { VisitHistory } from "@/components/VisitHistory";
 import { useBlockVisits } from "@/data/useBlockVisits";
+import { failureMessage } from "@/data/failureMessage";
 import { useDashboard, type DashboardView } from "@/data/useDashboard";
 import { dueLabel, frequencyLabel, type BlockWithJobs, type Job } from "@/shared/fireData";
 import { useSyncStatus } from "@/sync/useSyncStatus";
@@ -78,7 +79,7 @@ function Detail({ block, dashboard }: { block: BlockWithJobs; dashboard: Dashboa
 			router.replace({ pathname: "/v/[token]", params: { token } });
 		} catch (err) {
 			setBusy(false);
-			setError(err instanceof Error ? err.message : "Couldn't start the checklist.");
+			setError(failureMessage(err, "Couldn't start the checklist. Try again in a moment."));
 		}
 	}
 

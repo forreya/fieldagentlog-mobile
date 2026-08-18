@@ -14,6 +14,24 @@ export function severityLabel(severity: string): string {
 	return severity.toLowerCase() === "critical" ? "Intolerable" : severity;
 }
 
+/**
+ * The text colour that is readable on that chip.
+ *
+ * Not a style choice: white on the amber measures 2.47:1, so a "medium" chip
+ * was the least legible thing on the screen, and it is the one telling somebody
+ * how bad a fire-safety defect is. Dark ink on amber and orange is 7.27 and
+ * 5.03; white stays on the grey and the deep red, where it is 5.77 and 7.33.
+ */
+export function severityTextColour(severity: string): string {
+	switch (severity.toLowerCase()) {
+		case "medium":
+		case "high":
+			return colors.plateInk;
+		default:
+			return colors.plateRaised;
+	}
+}
+
 export function severityColour(severity: string): string {
 	switch (severity.toLowerCase()) {
 		case "low":
@@ -138,7 +156,7 @@ function FailureRow({ fail }: { fail: VisitFailure }) {
 			<View style={styles.failHead}>
 				{fail.severity ? (
 					<View style={[styles.sev, { backgroundColor: severityColour(fail.severity) }]}>
-						<Text style={styles.sevText}>{severityLabel(fail.severity)}</Text>
+						<Text style={[styles.sevText, { color: severityTextColour(fail.severity) }]}>{severityLabel(fail.severity)}</Text>
 					</View>
 				) : null}
 				<Text style={styles.failTitle}>{fail.title}</Text>
@@ -174,7 +192,7 @@ const styles = StyleSheet.create({
 	fail: { gap: 2, borderLeftWidth: 3, borderLeftColor: colors.plateEdgeStrong, paddingLeft: space.s3 },
 	failHead: { flexDirection: "row", alignItems: "center", gap: space.s2, flexWrap: "wrap" },
 	sev: { paddingVertical: 2, paddingHorizontal: 7, borderRadius: radii.sm },
-	sevText: { fontFamily: fonts.displayHeavy, fontSize: 11, textTransform: "capitalize", color: colors.plateRaised },
+	sevText: { fontFamily: fonts.displayHeavy, fontSize: 11, textTransform: "capitalize" },
 	failTitle: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.plateInk },
 	failNote: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: colors.plateMuted },
 	more: { minHeight: 40, justifyContent: "center" },

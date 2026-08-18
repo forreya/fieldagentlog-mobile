@@ -7,6 +7,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { loadBlockVisits, type BlockVisit } from "@/api/agent";
+import { failureMessage } from "./failureMessage";
 
 export const blockVisitsKey = (blockId: string) => ["block-visits", blockId] as const;
 
@@ -27,7 +28,7 @@ export function useBlockVisits(blockId: string): VisitHistoryView {
 	return {
 		visits: query.data ?? [],
 		loading: query.isPending,
-		error: query.error instanceof Error ? query.error.message : query.error ? "Couldn't load past visits." : null,
+		error: query.error ? failureMessage(query.error, "Couldn't load past visits.") : null,
 		refresh: () => void query.refetch(),
 	};
 }

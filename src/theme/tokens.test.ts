@@ -8,8 +8,18 @@ test("core palette matches the web app's tokens.css", () => {
 	expect(colors.ink).toBe("#161B22");
 	expect(colors.plate).toBe("#F6F8FA");
 	expect(colors.signal).toBe("#5C8CAE");
-	expect(colors.pass).toBe("#1E8E3E");
-	expect(colors.fail).toBe("#D7263D");
+});
+
+// The one place the two deliberately differ, recorded here so it stays a
+// decision rather than becoming drift. The web's verdict colours miss WCAG AA
+// at the sizes this app renders them - #1E8E3E is 3.70:1 on passTint, #D7263D
+// is 4.16:1 on failTint - so both are darkened by the least that clears 4.5.
+// contrast.test.ts is what actually holds them there.
+//
+// The web has the same defect. When it is fixed there, these should meet again.
+test("the verdict colours diverge from the web, on purpose", () => {
+	expect(colors.pass).toBe("#1B7E37");
+	expect(colors.fail).toBe("#CD243A");
 });
 
 test("tap targets meet the glove-friendly minimums", () => {
