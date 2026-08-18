@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Linking, StyleSheet, Text } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
+import { useHandoff } from "@/cleaner/useHandoff";
 import { Button } from "@/components/Button";
 import { StatusScreen } from "@/components/StatusScreen";
 import type { VisitRecord } from "@/db/types";
@@ -26,10 +27,11 @@ type Submitted = NonNullable<VisitRecord["submitted"]>;
  * signed URL to a PDF that people forward, print and file, and every phone
  * already has a viewer that can do all three.
  */
-export function SuccessScreen({ blockName, submitted }: { blockName?: string; submitted: Submitted }) {
+export function SuccessScreen({ blockName, submitted, token }: { blockName?: string; submitted: Submitted; token?: string }) {
 	const [failed, setFailed] = useState(false);
 	const { state } = useAuth();
 	const signedIn = state.status === "signed_in";
+	const handoff = useHandoff(token ?? "");
 
 	async function openLogbook() {
 		try {
@@ -56,7 +58,13 @@ export function SuccessScreen({ blockName, submitted }: { blockName?: string; su
 			    waiting to be swiped back into. */}
 			{/* ghostDark, not ghost: StatusScreen is a dark plate, and the light
 			    variant renders near-black text on it. */}
-			{signedIn ? <Button label="Back to your blocks" variant="ghostDark" block onPress={() => router.replace("/(app)")} /> : null}
+			{/* A cleaner is still on site with a timer running - "your blocks" is
+			    not where they are going, and their session is what they left. */}
+			{handoff.fromCleaner ? (
+				<Button label="Back to your site visit" variant="ghostDark" block onPress={() => handoff.goBack(true)} />
+			) : signedIn ? (
+				<Button label="Back to your blocks" variant="ghostDark" block onPress={() => router.replace("/(app)")} />
+			) : null}
 			<Text style={styles.note}>This visit is now locked.</Text>
 		</StatusScreen>
 	);

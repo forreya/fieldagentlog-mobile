@@ -11,6 +11,10 @@ import type { AttendanceSession } from "@/db/types";
 import * as position from "@/lib/position";
 import { syncEngine } from "@/sync/engine";
 
+import * as cleanerApi from "@/api/cleaner";
+import { router } from "expo-router";
+
+import * as handoffModule from "./handoff";
 import { openSession, useAttendance } from "./useAttendance";
 
 jest.mock("@/db/attendance");
@@ -20,10 +24,15 @@ jest.mock("expo-crypto", () => {
 });
 jest.mock("@/lib/position");
 jest.mock("@/sync/engine", () => ({ syncEngine: { sync: jest.fn(), subscribe: jest.fn(() => () => undefined) } }));
+jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
+jest.mock("@/api/cleaner");
+jest.mock("./handoff");
 
 const db = attendanceDb as jest.Mocked<typeof attendanceDb>;
 const geo = position as jest.Mocked<typeof position>;
 const engine = syncEngine as unknown as { sync: jest.Mock; subscribe: jest.Mock };
+const api = cleanerApi as jest.Mocked<typeof cleanerApi>;
+const handoff = handoffModule as jest.Mocked<typeof handoffModule>;
 
 const FIX = { lat: 51.5, lng: -0.1, accuracy: 8, at: 1_760_000_000_000 };
 
@@ -36,6 +45,8 @@ beforeEach(() => {
 	db.saveAttendance.mockResolvedValue(undefined);
 	geo.captureFix.mockResolvedValue({ status: "ok", fix: FIX });
 	geo.fixMessage.mockImplementation((o) => (o.status === "ok" ? null : `message for ${o.status}`));
+	api.startFireChecks.mockResolvedValue("fire-token");
+	handoff.markHandoff.mockResolvedValue(undefined);
 });
 
 // RNTL 14 unmounts between tests, but a hook whose effect is still resolving a
@@ -206,5 +217,59 @@ describe("following the queue", () => {
 		await emit();
 
 		await waitFor(() => expect(result.current.justClosed?.synced_out).toBe(true));
+	});
+});
+
+describe("handing off to the checks", () => {
+	async function onSite() {
+		const view = await mounted();
+		await act(async () => void (await view.result.current.checkIn("site-1", "Elm Court")));
+		return view;
+	}
+
+	test("mints a visit, marks the handoff, then navigates - in that order", async () => {
+		const { result } = await onSite();
+
+		await act(async () => void (await result.current.startChecks()));
+
+		// The attendance local_id goes with it, so the fire visit is linked to the
+		// cleaning visit it happened during.
+		expect(api.startFireChecks).toHaveBeenCalledWith("site-1", result.current.active?.local_id);
+		expect(handoff.markHandoff).toHaveBeenCalledWith({ token: "fire-token", siteName: "Elm Court" });
+		// Marked BEFORE navigating: an app that dies on the way still knows where
+		// this person came from.
+		expect(handoff.markHandoff.mock.invocationCallOrder[0]).toBeLessThan((router.push as jest.Mock).mock.invocationCallOrder[0]);
+		expect(router.push).toHaveBeenCalledWith({ pathname: "/v/[token]", params: { token: "fire-token" } });
+	});
+
+	test("the session stays open underneath", async () => {
+		// The timer keeps running while they are in the wizard; checking out is
+		// still owed when they come back.
+		const { result } = await onSite();
+
+		await act(async () => void (await result.current.startChecks()));
+
+		expect(result.current.active).not.toBeNull();
+		expect(result.current.active?.check_out).toBeNull();
+	});
+
+	test("a broker refusal is shown and nothing is navigated to", async () => {
+		// "No fire-safety checks are due here." is a 409 the broker words itself.
+		api.startFireChecks.mockRejectedValue(new Error("No fire-safety checks are due here."));
+		const { result } = await onSite();
+
+		await act(async () => void (await result.current.startChecks()));
+
+		expect(result.current.error).toBe("No fire-safety checks are due here.");
+		expect(handoff.markHandoff).not.toHaveBeenCalled();
+		expect(router.push).not.toHaveBeenCalled();
+	});
+
+	test("checks cannot be started when not on site", async () => {
+		const { result } = await mounted();
+
+		await act(async () => void (await result.current.startChecks()));
+
+		expect(api.startFireChecks).not.toHaveBeenCalled();
 	});
 });

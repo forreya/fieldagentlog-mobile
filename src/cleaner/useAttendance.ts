@@ -10,13 +10,17 @@
 // and says why, rather than recording something the managing agent cannot rely
 // on.
 
+import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 
+import { startFireChecks } from "@/api/cleaner";
 import { allAttendance, saveAttendance } from "@/db/attendance";
 import type { AttendanceSession, GeoPoint } from "@/db/types";
 import { uuid } from "@/lib/id";
 import { captureFix, fixMessage } from "@/lib/position";
 import { syncEngine } from "@/sync/engine";
+
+import { markHandoff } from "./handoff";
 
 export interface AttendanceView {
 	/** The session in progress, or null when not on site. */
@@ -28,6 +32,8 @@ export interface AttendanceView {
 	error: string | null;
 	checkIn: (siteId: string, siteName: string) => Promise<void>;
 	checkOut: () => Promise<void>;
+	/** Hand off into the inspection wizard for this site's due checks. */
+	startChecks: () => Promise<void>;
 	dismissError: () => void;
 	dismissClosed: () => void;
 }
@@ -102,6 +108,46 @@ function newSession(siteId: string, siteName: string, email: string | null, poin
 	};
 }
 
+/**
+ * Mint the checks visit and go there.
+ *
+ * The attendance id links the fire visit to the cleaning visit it happened
+ * during. Passed best-effort: a check-in still sitting in the queue has no
+ * server row to link to yet, and the broker leaves it unlinked rather than
+ * refusing - the checks matter more than the link.
+ */
+async function handOffToWizard(session: AttendanceSession): Promise<void> {
+	const token = await startFireChecks(session.site_id, session.local_id);
+	// Marked BEFORE navigating. If the app dies on the way, the wizard still
+	// knows where this person came from when it comes back up.
+	await markHandoff({ token, siteName: session.site_name });
+	// Pushed, not replaced: the session is still running underneath, and coming
+	// back to it is the expected end of this trip.
+	router.push({ pathname: "/v/[token]", params: { token } });
+}
+
+/** Handing off is its own small state machine, and lifting it keeps the hook
+ *  below the size budget without hiding anything. */
+function useStartChecks(
+	active: AttendanceSession | null,
+	busy: boolean,
+	setBusy: (value: boolean) => void,
+	setError: (value: string | null) => void,
+): () => Promise<void> {
+	return useCallback(async () => {
+		if (busy || !active) return;
+		setBusy(true);
+		setError(null);
+		try {
+			await handOffToWizard(active);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Couldn't start the checks.");
+		} finally {
+			setBusy(false);
+		}
+	}, [active, busy, setBusy, setError]);
+}
+
 export function useAttendance(email: string | null): AttendanceView {
 	const [active, setActive] = useState<AttendanceSession | null>(null);
 	const [justClosed, setJustClosed] = useState<AttendanceSession | null>(null);
@@ -158,6 +204,8 @@ export function useAttendance(email: string | null): AttendanceView {
 		}
 	}, [active, busy, fix]);
 
+	const startChecks = useStartChecks(active, busy, setBusy, setError);
+
 	return {
 		active,
 		justClosed,
@@ -165,6 +213,7 @@ export function useAttendance(email: string | null): AttendanceView {
 		error,
 		checkIn: startVisit,
 		checkOut: endVisit,
+		startChecks,
 		dismissError: useCallback(() => setError(null), []),
 		dismissClosed: useCallback(() => setJustClosed(null), []),
 	};

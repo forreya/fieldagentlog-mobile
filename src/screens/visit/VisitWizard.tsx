@@ -20,7 +20,7 @@ export function VisitWizard({ record, fromCache }: { record: VisitRecord; fromCa
 	const { state, dispatch } = useWizard(record);
 	const { phase, submitted, submit } = useSubmit(state.record, dispatch);
 
-	if (submitted) return <SuccessScreen blockName={blockNameOf(state.record)} submitted={submitted} />;
+	if (submitted) return <SuccessScreen blockName={blockNameOf(state.record)} submitted={submitted} token={record.token} />;
 
 	switch (state.step) {
 		case "intro":

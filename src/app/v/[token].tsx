@@ -26,13 +26,13 @@ export default function VisitRoute() {
 		case "dead_end":
 			return <DeadEndScreen reason={state.reason} />;
 		case "offline_no_cache":
-			return <ConnectionErrorScreen mode="offline" onRetry={retry} />;
+			return <ConnectionErrorScreen mode="offline" onRetry={retry} token={token} />;
 		case "error":
-			return <ConnectionErrorScreen mode="error" onRetry={retry} />;
+			return <ConnectionErrorScreen mode="error" onRetry={retry} token={token} />;
 		case "submitted":
 			// Reopening a finished link. Shown from cache without a request: the
 			// visit is locked, so asking the server could only fail underground.
-			return <SuccessScreen blockName={blockNameOf(state.record)} submitted={state.record.submitted} />;
+			return <SuccessScreen blockName={blockNameOf(state.record)} submitted={state.record.submitted} token={token} />;
 		case "ready":
 			return <VisitWizard record={state.record} fromCache={state.fromCache} />;
 	}

@@ -117,3 +117,20 @@ The reason the app exists, for a cleaner. Do the offline half on a real airplane
 - [ ] Force-stop while on site and relaunch: the timer is still running, from the right time.
 - [ ] Check out: the banner's duration matches what the server stored, not what the phone counted.
 - [ ] Check out with no signal: the banner says it goes up when there is signal, and it does.
+
+### Duties and the wizard handoff
+
+- [ ] The duties card appears only while checked in, and only when something is actually due -
+      a site with nothing due shows no card at all, not an empty one.
+- [ ] **Start checks** opens the wizard with the cleaner's own name prefilled, and only their
+      duties in it - not the block's whole schedule.
+- [ ] The on-site timer keeps running the whole way through. Attendance is not interrupted by the
+      checks; the cleaner is still on site.
+- [ ] Submitting ends on **"Back to your site visit"**, not "Back to your blocks".
+- [ ] Back at the cleaner home: the confirmation banner appears once, and **the duties card has
+      cleared**. Tapping Start checks again would earn a 409 from the broker, so a stale card is a
+      bug - it shipped that way and was caught here.
+- [ ] Kill the app mid-wizard and reopen: the way back is still offered. The marker is on disk,
+      not in memory.
+- [ ] Open an unrelated visit link cold: no "back to your site visit" anywhere. The marker is
+      keyed by token, so an abandoned handoff must not leak into somebody else's visit.

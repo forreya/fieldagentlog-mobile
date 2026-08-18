@@ -1,3 +1,4 @@
+import { useHandoff } from "@/cleaner/useHandoff";
 import { Button } from "@/components/Button";
 import { StatusScreen } from "@/components/StatusScreen";
 
@@ -9,8 +10,9 @@ import { StatusScreen } from "@/components/StatusScreen";
  * likely cause so the reader knows to walk somewhere with signal rather than
  * keep tapping.
  */
-export function ConnectionErrorScreen({ mode, onRetry }: { mode: "offline" | "error"; onRetry: () => void }) {
+export function ConnectionErrorScreen({ mode, onRetry, token }: { mode: "offline" | "error"; onRetry: () => void; token?: string }) {
 	const offline = mode === "offline";
+	const handoff = useHandoff(token ?? "");
 	return (
 		<StatusScreen
 			tone="bad"
@@ -22,6 +24,9 @@ export function ConnectionErrorScreen({ mode, onRetry }: { mode: "offline" | "er
 			}
 		>
 			<Button label="Try again" size="lg" block onPress={onRetry} />
+			{/* A cleaner who cannot load the checks is still on site with a session
+			    running. Retry is the first offer; not being stranded is the second. */}
+			{handoff.fromCleaner ? <Button label="Back to your site visit" variant="ghostDark" block onPress={() => handoff.goBack(false)} /> : null}
 		</StatusScreen>
 	);
 }

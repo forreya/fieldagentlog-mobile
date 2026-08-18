@@ -72,6 +72,11 @@ export function useSubmit(record: VisitRecord, dispatch: (action: WizardAction) 
 			// just did, until the cache happens to go stale.
 			void queries.invalidateQueries({ queryKey: ["dashboard"] });
 			void queries.invalidateQueries({ queryKey: ["block-visits"] });
+			// Same reason, for the cleaner: a duty just submitted is no longer due,
+			// and a stale duties card invites a second tap that the broker answers
+			// with "No fire-safety checks are due here."
+			void queries.invalidateQueries({ queryKey: ["cleaner-sites"] });
+			void queries.invalidateQueries({ queryKey: ["site-duties"] });
 			return true;
 		}
 		if (saved?.submit_error) {

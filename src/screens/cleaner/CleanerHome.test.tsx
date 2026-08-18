@@ -16,6 +16,13 @@ jest.mock("@/auth/AuthProvider", () => ({
 const mockSites = { current: {} as SitesView };
 jest.mock("@/data/useSites", () => ({ useSites: () => mockSites.current }));
 
+// The screen's other three hooks, stubbed so this file stays about rendering
+// the list. Each has its own tests.
+const mockAttendance = { current: {} as Record<string, unknown> };
+jest.mock("@/cleaner/useAttendance", () => ({ useAttendance: () => mockAttendance.current }));
+jest.mock("@/data/useDuties", () => ({ useDuties: () => ({ duties: [], loading: false, refresh: jest.fn() }) }));
+jest.mock("@/cleaner/useChecksSubmitted", () => ({ useChecksSubmitted: () => ({ hit: false, dismiss: jest.fn() }) }));
+
 const site = (over: Partial<CleanerSite>): CleanerSite => ({
 	id: "s1",
 	name: "Elm Court",
@@ -25,6 +32,17 @@ const site = (over: Partial<CleanerSite>): CleanerSite => ({
 });
 
 async function show(view: Partial<SitesView>) {
+	mockAttendance.current = {
+		active: null,
+		justClosed: null,
+		busy: false,
+		error: null,
+		checkIn: jest.fn(),
+		checkOut: jest.fn(),
+		startChecks: jest.fn(),
+		dismissError: jest.fn(),
+		dismissClosed: jest.fn(),
+	};
 	mockSites.current = { sites: null, loading: false, refreshing: false, error: null, updatedAt: 1, refresh: jest.fn(), ...view };
 	await render(<CleanerHome />);
 }

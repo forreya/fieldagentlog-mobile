@@ -4,6 +4,7 @@ import type { CleanerSite } from "@/api/cleaner";
 import { useAuth } from "@/auth/AuthProvider";
 import { Banner } from "@/components/Banner";
 import { Button } from "@/components/Button";
+import { DutiesCard } from "@/components/DutiesCard";
 import { FindBar } from "@/components/FindBar";
 import { Note } from "@/components/Note";
 import { OnSiteCard, formatDuration } from "@/components/OnSiteCard";
@@ -13,6 +14,8 @@ import { StatusPill } from "@/components/StatusPill";
 import { freshnessLabel } from "@/data/useDashboard";
 import { useFind } from "@/data/useFind";
 import { useAttendance, type AttendanceView } from "@/cleaner/useAttendance";
+import { useChecksSubmitted } from "@/cleaner/useChecksSubmitted";
+import { useDuties, type DutiesView } from "@/data/useDuties";
 import { useSites, type SitesView } from "@/data/useSites";
 import { useSyncStatus } from "@/sync/useSyncStatus";
 import { colors, fonts, space } from "@/theme/tokens";
@@ -36,6 +39,8 @@ export function CleanerHome() {
 	const sites = useSites();
 	const email = state.status === "signed_in" ? (state.user.email ?? undefined) : undefined;
 	const attendance = useAttendance(email ?? null);
+	const duties = useDuties(attendance.active?.site_id ?? null);
+	const checksSubmitted = useChecksSubmitted();
 
 	return (
 		<Screen
@@ -46,7 +51,7 @@ export function CleanerHome() {
 			scroll={false}
 			footer={<Button label="Sign out" variant="ghostDark" block onPress={() => void signOut()} />}
 		>
-			<Body sites={sites} attendance={attendance} />
+			<Body sites={sites} attendance={attendance} duties={duties} checksSubmitted={checksSubmitted} />
 		</Screen>
 	);
 }
@@ -54,7 +59,14 @@ export function CleanerHome() {
 /** Stable empty list, so the finder does not re-run while the sites load. */
 const NO_SITES: CleanerSite[] = [];
 
-function Body({ sites, attendance }: { sites: SitesView; attendance: AttendanceView }) {
+interface BodyProps {
+	sites: SitesView;
+	attendance: AttendanceView;
+	duties: DutiesView;
+	checksSubmitted: { hit: boolean; dismiss: () => void };
+}
+
+function Body({ sites, attendance, duties, checksSubmitted }: BodyProps) {
 	const { sites: data, loading, refreshing, error, updatedAt, refresh } = sites;
 	const find = useFind(data ?? NO_SITES);
 
@@ -79,8 +91,17 @@ function Body({ sites, attendance }: { sites: SitesView; attendance: AttendanceV
 			<Summary sites={data} showStamp={!error} updatedAt={updatedAt} />
 			{error ? <Stale message={error} updatedAt={updatedAt} /> : null}
 
+			{checksSubmitted.hit ? (
+				<Banner
+					tone="ok"
+					text={`Fire-safety checks submitted - they're in the site's fire logbook.${
+						attendance.active ? " You're still checked in here: check out below when you leave." : ""
+					}`}
+					onDismiss={checksSubmitted.dismiss}
+				/>
+			) : null}
 			<AttendanceBanners attendance={attendance} />
-			{attendance.active ? <OnSiteCard session={attendance.active} busy={attendance.busy} onCheckOut={() => void attendance.checkOut()} /> : null}
+			<OnSite attendance={attendance} duties={duties} />
 
 			{data.length === 0 ? (
 				<Note
@@ -136,6 +157,17 @@ function AttendanceBanners({ attendance }: { attendance: AttendanceView }) {
 					onDismiss={attendance.dismissClosed}
 				/>
 			) : null}
+		</>
+	);
+}
+
+/** Everything that only exists while somebody is standing in a building. */
+function OnSite({ attendance, duties }: { attendance: AttendanceView; duties: DutiesView }) {
+	if (!attendance.active) return null;
+	return (
+		<>
+			<OnSiteCard session={attendance.active} busy={attendance.busy} onCheckOut={() => void attendance.checkOut()} />
+			<DutiesCard duties={duties.duties} busy={attendance.busy} onStart={() => void attendance.startChecks()} />
 		</>
 	);
 }

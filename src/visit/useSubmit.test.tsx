@@ -203,6 +203,22 @@ describe("what a landed submit invalidates", () => {
 		expect(keys).toContain(JSON.stringify(["block-visits"]));
 	});
 
+	test("the cleaner's sites and duties, for exactly the same reason", async () => {
+		// A cleaner comes back from the wizard to a duties card that still lists
+		// the check they just did, and tapping it again earns a 409 from the
+		// broker. Found on device during E3.
+		const spy = jest.spyOn(queries, "invalidateQueries");
+		const { result } = await mount();
+
+		await act(async () => {
+			await result.current.submit();
+		});
+
+		const keys = spy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
+		expect(keys).toContain(JSON.stringify(["cleaner-sites"]));
+		expect(keys).toContain(JSON.stringify(["site-duties"]));
+	});
+
 	test("nothing, while it is still only queued", async () => {
 		syncEngine.setOnline(false);
 		const spy = jest.spyOn(queries, "invalidateQueries");

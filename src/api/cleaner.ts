@@ -68,3 +68,44 @@ export async function checkOut(clientId: string, point: { at: number; lat: numbe
 	});
 	return res.duration_seconds ?? 0;
 }
+
+// ── Duties ──────────────────────────────────────────────────────────────────
+//
+// Not every fire check at a site is a cleaner's job. The broker filters out the
+// contractor-owned ones and the ones that are not due yet, so this list is
+// already "what you should do while you are here" rather than the block's whole
+// schedule.
+
+export type DutyStatus = "overdue" | "soon";
+
+export interface CleanerDuty {
+	id: string;
+	title: string;
+	/** "Weekly", "Monthly" - the cadence, in the words the catalogue uses. */
+	freq_label: string;
+	status: DutyStatus;
+	status_label: string;
+}
+
+export async function loadSiteDuties(siteId: string): Promise<CleanerDuty[]> {
+	const res = await callBroker<{ duties?: CleanerDuty[] }>("cleaner", { action: "site-duties", site_id: siteId });
+	return res.duties ?? [];
+}
+
+/**
+ * Mint a visit for the checks due at this site and hand the token back.
+ *
+ * `attendanceClientId` links the fire visit to the cleaning visit it happened
+ * during. It is best-effort by design: the broker looks the session up by
+ * client_id, so a check-in still sitting in the queue cannot be linked yet. The
+ * checks are worth more than the link, so an unlinked visit is the right
+ * trade - not a refusal.
+ */
+export async function startFireChecks(siteId: string, attendanceClientId?: string): Promise<string> {
+	const res = await callBroker<{ token: string }>("cleaner", {
+		action: "start-fire-checks",
+		site_id: siteId,
+		attendance_client_id: attendanceClientId,
+	});
+	return res.token;
+}
