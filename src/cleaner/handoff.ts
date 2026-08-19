@@ -84,6 +84,19 @@ export async function endHandoff(submitted: boolean): Promise<void> {
 	}
 }
 
+/** Drop the one-shot banner flag without consuming it. Called on deliberate
+ *  sign-out only: the flag announces "YOUR checks landed", and whoever signs
+ *  in next on this phone may be somebody else. A restart or an expired
+ *  session is still the same person mid-flow, so neither touches it - and
+ *  the handoff marker is left alone entirely, being token-scoped. */
+export async function clearChecksSubmitted(): Promise<void> {
+	try {
+		await AsyncStorage.removeItem(SUBMITTED);
+	} catch {
+		/* a banner that survives is a nicety shown to the wrong person once */
+	}
+}
+
 /** True exactly once, right after returning from a submitted checks visit. */
 export async function consumeChecksSubmitted(): Promise<boolean> {
 	try {

@@ -14,6 +14,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useQueryClient } from "@tanstack/react-query";
 
 import { onSessionExpired } from "@/api/session";
+import { clearChecksSubmitted } from "@/cleaner/handoff";
 import { clearPersistedReadCache } from "@/data/queryClient";
 import { setQueueOwner } from "@/sync/owner";
 import { requestSync } from "@/sync/triggers";
@@ -97,6 +98,10 @@ export async function endSession(): Promise<void> {
 		// either way, which is what signing out means here.
 	}
 	await forgetRole();
+	// The one-shot "your checks landed" banner is this user's news, not the
+	// next account's. Session EXPIRY deliberately does not reach this
+	// function, so the same person coming back mid-flow keeps their banner.
+	await clearChecksSubmitted();
 	// The queues stay - they belong to the device - but they stop being
 	// pushable: there is no session to push under, and whatever arrives next
 	// may belong to somebody else.

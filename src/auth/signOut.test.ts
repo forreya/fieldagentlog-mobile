@@ -12,6 +12,7 @@ import { addPendingPhoto, pendingPhotosForToken } from "@/db/photos";
 import type { PendingPhoto, VisitRecord } from "@/db/types";
 import { allVisits, saveVisit } from "@/db/visits";
 
+import { consumeChecksSubmitted, endHandoff } from "@/cleaner/handoff";
 import { queueOwner, setQueueOwner } from "@/sync/owner";
 
 import { endSession } from "./AuthProvider";
@@ -100,4 +101,25 @@ test("signs this device out, not every device on the account", async () => {
 	await endSession();
 
 	expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+});
+
+test("the next account does not inherit the last cleaner's checks-submitted banner", async () => {
+	// Cleaner A's checks landed and the one-shot flag is waiting for A's home
+	// to consume it. A signs out; B signs in on the same phone. B's home must
+	// find nothing - the banner announces A's work, not B's.
+	await endHandoff(true);
+
+	await endSession();
+
+	expect(await consumeChecksSubmitted()).toBe(false);
+});
+
+test("a restart without a sign-out keeps the banner for its owner", async () => {
+	// Only DELIBERATE sign-out clears it. The same person relaunching the app
+	// (or having their session expire, which never reaches endSession) still
+	// gets their news exactly once.
+	await endHandoff(true);
+
+	expect(await consumeChecksSubmitted()).toBe(true);
+	expect(await consumeChecksSubmitted()).toBe(false);
 });
