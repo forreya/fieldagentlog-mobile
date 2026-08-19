@@ -11,7 +11,7 @@ import * as attendanceDb from "@/db/attendance";
 import { ApiError } from "@/api/errors";
 import type { AttendanceSession, GeoPoint } from "@/db/types";
 
-import { attendanceHasWork, createAttendanceSource, pushAttendance } from "./attendanceSync";
+import { attendanceHasWork, clearAttendanceFailure, createAttendanceSource, pushAttendance } from "./attendanceSync";
 import { setQueueOwner } from "./owner";
 
 jest.mock("@/api/cleaner");
@@ -246,4 +246,54 @@ test("a shift queued while signed out is kept sendable", async () => {
 	await expect(pushAttendance(session({ synced_in: true, check_out: OUT }))).rejects.toThrow();
 
 	expect(saved().every((s) => !s.sync_error)).toBe(true);
+});
+
+describe("manual recovery - and the absence of anything else", () => {
+	// Attendance is evidence: clearAttendanceFailure is the ONLY recovery this
+	// module offers. There is no discard, by decision - a shift record that
+	// could not be sent stays on the phone until it can be, or until an
+	// explicit support mechanism reconciles it.
+	const failed = () => session({ check_out: OUT, synced_in: true, sync_error: { message: "Your account is not active.", at: 1 } });
+
+	test("Try again clears the failure and the session is eligible again - exactly once", async () => {
+		db.allAttendance.mockResolvedValue([failed()]);
+
+		expect(await clearAttendanceFailure("abc-123")).toBe(true);
+		const cleared = db.saveAttendance.mock.calls[0][0];
+		expect(cleared.sync_error).toBeUndefined();
+		expect(attendanceHasWork(cleared)).toBe(true);
+
+		// A second tap finds nothing recorded and changes nothing.
+		db.allAttendance.mockResolvedValue([cleared]);
+		expect(await clearAttendanceFailure("abc-123")).toBe(false);
+		expect(db.saveAttendance).toHaveBeenCalledTimes(1);
+	});
+
+	test("clearing a session that is not failed, or is gone, is a no-op", async () => {
+		db.allAttendance.mockResolvedValue([session()]);
+		expect(await clearAttendanceFailure("abc-123")).toBe(false);
+
+		db.allAttendance.mockResolvedValue([]);
+		expect(await clearAttendanceFailure("abc-123")).toBe(false);
+		expect(db.saveAttendance).not.toHaveBeenCalled();
+	});
+
+	test("retrying after the account is put right records the shift once", async () => {
+		// The whole point of Try again: the broker's refusal was account state,
+		// the managing agent fixed it, and the identical payload goes through -
+		// idempotent on the client id, so a replay cannot double-record.
+		db.allAttendance.mockResolvedValue([failed()]);
+		await clearAttendanceFailure("abc-123");
+		const cleared = db.saveAttendance.mock.calls[0][0];
+
+		await pushAttendance(cleared);
+		expect(api.checkOut).toHaveBeenCalledWith("abc-123", OUT);
+		expect(db.deleteAttendance).toHaveBeenCalledWith("abc-123");
+	});
+
+	test("nothing in this module can delete an unsent shift", () => {
+		// Pinning the decision, not just the code: deleteAttendance is called
+		// only by the push path once BOTH ends are on the server.
+		expect(db.deleteAttendance).not.toHaveBeenCalled();
+	});
 });

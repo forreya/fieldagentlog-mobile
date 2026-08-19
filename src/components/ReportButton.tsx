@@ -23,8 +23,26 @@ export interface ReportButtonProps {
 	attendanceClientId?: string | null;
 }
 
+/** The line under the button. "Waiting" and "not sent" are different facts: a
+ *  waiting report goes by itself, a failed one goes nowhere until somebody
+ *  acts on it in Your reports - counting the second as the first told people
+ *  a stuck report was merely queued. */
+export function pendingHint(reports: { sync_error?: unknown }[]): string | null {
+	const failed = reports.filter((r) => r.sync_error).length;
+	const waiting = reports.length - failed;
+	if (waiting === 0 && failed === 0) return null;
+	if (failed === 0) {
+		return `${waiting} ${waiting === 1 ? "report" : "reports"} waiting to send - ${waiting === 1 ? "it goes" : "they go"} when you have signal.`;
+	}
+	if (waiting === 0) {
+		return `${failed} ${failed === 1 ? "report" : "reports"} not sent - ${failed === 1 ? "it needs" : "they need"} attention in Your reports.`;
+	}
+	return `${waiting} ${waiting === 1 ? "report" : "reports"} waiting to send · ${failed} not sent - see Your reports.`;
+}
+
 export function ReportButton({ site, attendanceClientId }: ReportButtonProps) {
 	const pending = usePendingReports();
+	const hint = pendingHint(pending);
 
 	function open() {
 		router.push({
@@ -39,11 +57,7 @@ export function ReportButton({ site, attendanceClientId }: ReportButtonProps) {
 	return (
 		<View style={styles.wrap}>
 			<Button label="Report an issue" variant="ghost" block onPress={open} />
-			{pending.length > 0 ? (
-				<Text style={styles.hint}>
-					{pending.length} {pending.length === 1 ? "report" : "reports"} waiting to send - they go when you have signal.
-				</Text>
-			) : null}
+			{hint ? <Text style={styles.hint}>{hint}</Text> : null}
 		</View>
 	);
 }

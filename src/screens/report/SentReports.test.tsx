@@ -1,6 +1,7 @@
 // "Did my report go?" - the question this screen exists to answer.
 
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
+import { Alert } from "react-native";
 
 import type { SentReport } from "@/api/report";
 import type { ReportsView } from "@/data/useReports";
@@ -39,7 +40,17 @@ const sent = (over: Partial<SentReport> = {}): SentReport => ({
 });
 
 async function show(over: Partial<ReportsView> = {}) {
-	mockReports.current = { pending: [], sent: [], loading: false, refreshing: false, error: null, refresh: jest.fn(), ...over };
+	mockReports.current = {
+		pending: [],
+		sent: [],
+		loading: false,
+		refreshing: false,
+		error: null,
+		refresh: jest.fn(),
+		retry: jest.fn(),
+		discard: jest.fn(),
+		...over,
+	};
 	await render(<SentReports />);
 }
 
@@ -111,5 +122,55 @@ describe("when the server list fails", () => {
 
 		expect(screen.getByText("Couldn't load your reports")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+	});
+});
+
+describe("a failed report's two ways out", () => {
+	const failed = () => pending({ sync_error: { message: "Block not assigned to you.", at: 1 } });
+
+	test("a waiting report offers neither - the queue owns it", async () => {
+		await show({ pending: [pending()] });
+		expect(screen.queryByText("Try again")).toBeNull();
+		expect(screen.queryByText("Discard")).toBeNull();
+	});
+
+	test("a failed one offers Try again, which clears and re-queues", async () => {
+		const retry = jest.fn();
+		await show({ pending: [failed()], retry });
+
+		fireEvent.press(screen.getByText("Try again"));
+		expect(retry).toHaveBeenCalledWith("rep-1");
+	});
+
+	test("Discard asks first, saying exactly what is lost", async () => {
+		const discard = jest.fn();
+		const alert = jest.spyOn(Alert, "alert");
+		await show({ pending: [failed()], discard });
+
+		fireEvent.press(screen.getByText("Discard"));
+
+		// Nothing is discarded by the tap itself.
+		expect(discard).not.toHaveBeenCalled();
+		expect(alert).toHaveBeenCalledWith(
+			"Discard unsent report?",
+			"This report for Elm Court has not been sent. Discarding it will permanently remove the report and its photos from this device.",
+			expect.anything(),
+		);
+
+		// Confirming is what discards.
+		const buttons = alert.mock.calls[0][2] as { text: string; onPress?: () => void }[];
+		buttons.find((b) => b.text === "Discard")?.onPress?.();
+		expect(discard).toHaveBeenCalledWith("rep-1");
+		alert.mockRestore();
+	});
+
+	test("a report with no site name gets a generic confirm, never an id", async () => {
+		const alert = jest.spyOn(Alert, "alert");
+		await show({ pending: [pending({ site_name: " ", sync_error: { message: "nope", at: 1 } })] });
+
+		fireEvent.press(screen.getByText("Discard"));
+		expect(String(alert.mock.calls[0][1])).toContain("This report for this site has not been sent.");
+		expect(String(alert.mock.calls[0][1])).not.toContain("s1");
+		alert.mockRestore();
 	});
 });

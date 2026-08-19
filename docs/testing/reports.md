@@ -51,9 +51,12 @@ never hangs on GPS and never errors because of it; the row simply has no positio
 **Steps:** `OFFLINE`: compose and send with two photos. Check the entry-point button and Your
 reports. `FORCE-STOP`, relaunch still offline. Restore signal.
 
-**Expected:** Send is accepted offline; the entry button shows "N reports waiting to send"; the
-pending row shows how many photos are still to send. All of it survives the force-stop. On
-signal: photos upload, the report lands, the pending row and badge clear without user action.
+**Expected:** Send is accepted offline; the entry button shows "N reports waiting to send - they
+go when you have signal"; the pending row shows how many photos are still to send. All of it
+survives the force-stop. On signal: photos upload, the report lands, the pending row and badge
+clear without user action. A **failed** report is never counted as "waiting": the hint says
+"N not sent - needs attention in Your reports" (or states both counts when the queue holds
+both kinds).
 
 ### REPORT-006 - Your reports is two honest lists
 
@@ -73,15 +76,28 @@ are not re-uploaded after the interruption (each file appears once in logs). The
 idempotent on the client id: retries after a lost response never file a duplicate. After landing,
 local photo bytes are cleaned up (Diagnostics photo-store usage drops).
 
-### REPORT-008 - A report that can never be filed
+### REPORT-008 - A report that could not be filed, and its two ways out
 
-**Steps:** Queue a report offline, then in Studio unassign the reporter from that block (or
-delete the block). Restore signal.
+**Steps:** Queue a report, then in Studio unassign the reporter from that block. Let the push
+fail. Then: (a) restore the assignment and tap **Try again**; (b) on a second failed report, tap
+**Discard**.
 
-**Expected:** The push fails permanently; the failure is recorded on the report and shown on its
-pending row with the reason; the queue stops offering it (no re-POST every app start). Other
-queued reports are unaffected. ⚠️ Behaviour requires clarification on recovery: there is no
-delete/edit for a permanently-failed report - see findings FIND-004.
+**Expected:**
+
+- The failure is recorded and shown on the pending row: "Not sent" tag, the broker's own human
+  reason, and two buttons - Try again and Discard. The queue stops offering it by itself (no
+  re-POST every app start); other queued work is unaffected. Waiting rows show neither button.
+- **Try again** clears the recorded failure and the same report sends - exactly once, verified
+  server-side. Repeated taps are safe (no-ops after the first). This is the release valve for
+  the 403 family, which is assignment/account state a managing agent can fix.
+- **Discard** asks first - "Discard unsent report?" naming the site and stating that the report
+  and its photos will be permanently removed from this device - and on confirm removes the row
+  and every photo byte. The server is untouched: nothing is filed, refiled or deleted remotely,
+  and a report whose create already landed has left the queue and cannot be discarded at all.
+- Only a **failed** report can be discarded - a waiting one belongs to the queue, which is what
+  makes discard race-free against an in-flight send.
+- All of it survives a `FORCE-STOP`; failed rows stay owner-scoped across account switches
+  (SYNC-008).
 
 ### REPORT-009 - The device refuses to store
 

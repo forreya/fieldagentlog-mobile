@@ -14,6 +14,7 @@ import { allReports } from "@/db/reports";
 import type { PendingReport } from "@/db/types";
 import { syncEngine } from "@/sync/engine";
 import { visibleToUser } from "@/sync/owner";
+import { clearReportFailure, discardReport } from "@/sync/reportSync";
 
 import { failureMessage } from "./failureMessage";
 
@@ -30,6 +31,10 @@ export interface ReportsView {
 	refreshing: boolean;
 	error: string | null;
 	refresh: () => void;
+	/** Clear a failed report's recorded failure and ask for a pass. */
+	retry: (localId: string) => void;
+	/** Permanently remove a failed report and its photos from this device. */
+	discard: (localId: string) => void;
 }
 
 /**
@@ -73,5 +78,16 @@ export function useReports(): ReportsView {
 		refreshing: query.isFetching && query.data !== undefined,
 		error: query.error ? failureMessage(query.error, "Something went wrong loading your reports.") : null,
 		refresh: useCallback(() => void query.refetch(), [query]),
+		// Both end with a pass request: retry needs one to actually send, and
+		// discard needs the engine to re-notify so every list and badge watching
+		// the queue re-reads. The engine is single-flight, so a spare ask is
+		// cheap; the queue functions themselves are no-ops unless the failure is
+		// still recorded, which is what makes repeated taps safe.
+		retry: useCallback((localId: string) => {
+			void clearReportFailure(localId).then(() => syncEngine.sync("report retry"));
+		}, []),
+		discard: useCallback((localId: string) => {
+			void discardReport(localId).then(() => syncEngine.sync("report discarded"));
+		}, []),
 	};
 }

@@ -57,3 +57,27 @@ test("once the check-in is up, the reassurance goes away", async () => {
 	await render(<OnSiteCard session={session({ synced_in: true })} busy={false} onCheckOut={jest.fn()} />);
 	expect(screen.queryByText(/Saved on this phone/)).toBeNull();
 });
+
+describe("a check-in that was refused", () => {
+	const failed = () => session({ synced_in: false, sync_error: { message: "Your account is not active. Ask your managing agent.", at: 1 } });
+
+	test("says so honestly instead of promising it will send itself", async () => {
+		await render(<OnSiteCard session={failed()} busy={false} onCheckOut={jest.fn()} onRetrySync={jest.fn()} />);
+
+		expect(screen.getByText(/This visit couldn't be recorded - Your account is not active/)).toBeTruthy();
+		expect(screen.getByText(/It stays saved on this phone/)).toBeTruthy();
+		// The old reassurance would be a lie here: nothing sends this by itself.
+		expect(screen.queryByText(/It goes up when you have signal/)).toBeNull();
+	});
+
+	test("offers Try again, and checking out still works", async () => {
+		const onRetrySync = jest.fn();
+		const onCheckOut = jest.fn();
+		await render(<OnSiteCard session={failed()} busy={false} onCheckOut={onCheckOut} onRetrySync={onRetrySync} />);
+
+		fireEvent.press(screen.getByText("Try again"));
+		expect(onRetrySync).toHaveBeenCalledTimes(1);
+		fireEvent.press(screen.getByText("Check out"));
+		expect(onCheckOut).toHaveBeenCalledTimes(1);
+	});
+});

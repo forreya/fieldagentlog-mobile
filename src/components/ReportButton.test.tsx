@@ -11,7 +11,7 @@ import { router } from "expo-router";
 
 import type { PendingReport } from "@/db/types";
 
-import { ReportButton } from "./ReportButton";
+import { pendingHint, ReportButton } from "./ReportButton";
 
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
 
@@ -76,5 +76,33 @@ test("one report is not 1 reports", async () => {
 	mockPending.current = [{ local_id: "a" }] as PendingReport[];
 	await render(<ReportButton site={{ id: "b1", name: "Elm Court" }} />);
 
-	expect(screen.getByText("1 report waiting to send - they go when you have signal.")).toBeTruthy();
+	expect(screen.getByText("1 report waiting to send - it goes when you have signal.")).toBeTruthy();
+});
+
+describe("the hint under the button", () => {
+	const waitingRow = {} as PendingReport;
+	const failedRow = { sync_error: { message: "nope", at: 1 } } as PendingReport;
+
+	test("waiting reports keep the reassurance - they go by themselves", () => {
+		expect(pendingHint([waitingRow])).toBe("1 report waiting to send - it goes when you have signal.");
+		expect(pendingHint([waitingRow, waitingRow])).toBe("2 reports waiting to send - they go when you have signal.");
+	});
+
+	test("a failed report is never called 'waiting' - it goes nowhere by itself", () => {
+		expect(pendingHint([failedRow])).toBe("1 report not sent - it needs attention in Your reports.");
+	});
+
+	test("mixed queues state both facts", () => {
+		expect(pendingHint([waitingRow, failedRow, failedRow])).toBe("1 report waiting to send · 2 not sent - see Your reports.");
+	});
+
+	test("an empty queue says nothing at all", () => {
+		expect(pendingHint([])).toBeNull();
+	});
+
+	test("the rendered hint separates failed from waiting", async () => {
+		mockPending.current = [waitingRow, failedRow];
+		await render(<ReportButton />);
+		expect(screen.getByText("1 report waiting to send · 1 not sent - see Your reports.")).toBeTruthy();
+	});
 });

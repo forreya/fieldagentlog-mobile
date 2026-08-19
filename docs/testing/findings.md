@@ -13,15 +13,6 @@ on write and reopening the link resumes - but the two exits behave differently.
 ⚠️ Behaviour requires clarification: intentional (back = navigate, affordance = abandon) or an
 oversight. Verify current behaviour on device when running NAV-008.
 
-### FIND-004 - No recovery path for permanently-failed queue items
-
-A report or attendance session whose push failed permanently (forbidden/invalid) is recorded and
-stops being offered - correct - but there is no user-facing way to discard or retry it. A failed
-report row sits in Your reports with its reason indefinitely; a permanently-failed attendance
-session is kept in the database as evidence of the shift but is surfaced nowhere. Deliberate as
-far as it goes (never silently destroy evidence), but unbounded retention with no visibility is
-⚠️ unresolved product behaviour. REPORT-008 references this.
-
 ### FIND-005 - Universal/app links are not live
 
 `associatedDomains` (iOS) and the `/v/` intent filter (Android) are declared, but the association
@@ -64,3 +55,18 @@ NAV-006 cannot be marked as ever-passed until the first drill on a post-`03dea46
 `/gallery` (design gallery) and `/diagnostics` are bundled routes reachable by deep link on any
 build. Nothing sensitive is shown (Diagnostics deliberately names hosts, never keys), so this is
 cosmetic - but NAV-009 exercises them so a future change there does not crash from a cold link.
+
+### FIND-011 - Photo uploads fail client-side in the Expo Go dev runtime
+
+Found during FIND-004 device verification (2026-08-19): a queued report's photo upload never
+reaches the server - the multipart fetch rejects immediately on the phone ("We couldn't reach
+the server") while JSON requests on the same session succeed. The queue behaves correctly (the
+failure classifies as network, so the report stays honestly "Waiting" and retries; nothing is
+poisoned), but the report can never send while the photo is attached. Suspected cause: the Expo
+"winter" runtime's spec-compliant fetch replacing React Native's networking, which does not
+accept RN's `{uri, name, type}` FormData file descriptor. Visit photos share the pipeline and
+may be equally affected on current bundles - the basement-test verification that proved photo
+upload predates the current dependency set. Needs: reproduction on an installed build (this may
+be Expo Go-specific), then either `expo/fetch`'s File API or a descriptor-compatible transport
+at the `postJson` multipart path. Until resolved, photo-bearing REPORT-005/-007 and WIZ-024
+cannot pass end-to-end in Expo Go.

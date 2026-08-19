@@ -14,6 +14,7 @@ import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
 import { StatusPill } from "@/components/StatusPill";
 import { allAttendance } from "@/db/attendance";
+import type { AttendanceSession } from "@/db/types";
 import { getDatabase, LATEST_VERSION } from "@/db/database";
 import { storeUsageBytes } from "@/db/photoStore";
 import { allReports } from "@/db/reports";
@@ -22,6 +23,7 @@ import { updateLabel, useUpdateState } from "@/lib/updates";
 import { backendSummary } from "@/lib/config";
 import { BUILD_COMMIT, versionLabel } from "@/lib/version";
 import { syncEngine, type SyncState } from "@/sync/engine";
+import { ownedByQueueOwner } from "@/sync/owner";
 import { pillState } from "@/sync/useSyncStatus";
 import { colors, fonts, space } from "@/theme/tokens";
 
@@ -29,9 +31,34 @@ interface Snapshot {
 	backend: string;
 	dbVersion: string;
 	journalMode: string;
-	attendance: number;
-	reports: number;
+	attendance: string;
+	reports: string;
 	photoBytes: number;
+}
+
+/** One queue's rows, described by state rather than lumped into a count.
+ *  "Waiting" sends itself, "needs attention" will not move without a person,
+ *  and "another account's" is held for whoever captured it - three different
+ *  answers to the support question this screen exists for. Counts only;
+ *  nothing here exposes another account's content. */
+export function describeQueue<T extends { sync_error?: unknown; owner_user_id?: string | null }>(rows: T[], owes: (row: T) => boolean): string {
+	let waiting = 0;
+	let attention = 0;
+	let held = 0;
+	for (const row of rows) {
+		if (!ownedByQueueOwner(row.owner_user_id)) held += 1;
+		else if (row.sync_error) attention += 1;
+		else if (owes(row)) waiting += 1;
+	}
+	const parts = [`${waiting} waiting`, `${attention} ${attention === 1 ? "needs" : "need"} attention`];
+	if (held > 0) parts.push(`${held} another account's`);
+	return parts.join(" · ");
+}
+
+/** Whether a session still owes the server an end. Mirrors the sync source's
+ *  rule minus ownership and failure, which describeQueue judges itself. */
+function attendanceOwes(session: AttendanceSession): boolean {
+	return !session.synced_in || (session.check_out !== null && !session.synced_out);
 }
 
 async function readSnapshot(): Promise<Snapshot> {
@@ -48,8 +75,8 @@ async function readSnapshot(): Promise<Snapshot> {
 		backend: backendSummary(),
 		dbVersion,
 		journalMode,
-		attendance: (await allAttendance()).length,
-		reports: (await allReports()).length,
+		attendance: describeQueue(await allAttendance(), attendanceOwes),
+		reports: describeQueue(await allReports(), () => true),
 		photoBytes: storeUsageBytes(),
 	};
 }
@@ -90,8 +117,8 @@ export function DiagnosticsScreen() {
 			<Card>
 				<Text style={styles.heading}>Queues</Text>
 				<Row label="Waiting to sync" value={String(sync.pending)} />
-				<Row label="Attendance held" value={String(snapshot?.attendance ?? 0)} />
-				<Row label="Reports held" value={String(snapshot?.reports ?? 0)} />
+				<Row label="Attendance" value={snapshot?.attendance ?? "..."} />
+				<Row label="Reports" value={snapshot?.reports ?? "..."} />
 				<Row label="Photos on disk" value={`${Math.round((snapshot?.photoBytes ?? 0) / 1024)} KB`} />
 			</Card>
 

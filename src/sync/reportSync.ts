@@ -15,7 +15,7 @@
 import { unfixable } from "@/api/errors";
 import { createReport, uploadReportPhoto } from "@/api/report";
 import { deleteStoredPhoto } from "@/db/photoStore";
-import { deleteReport, saveReport } from "@/db/reports";
+import { deleteReport, getReport, saveReport } from "@/db/reports";
 import type { PendingReport } from "@/db/types";
 import { unsyncedPhotoCount } from "@/db/types";
 
@@ -81,6 +81,45 @@ async function push(report: PendingReport, onProgress: (report: PendingReport) =
 	// The server has it. The bytes on the phone have done their job.
 	for (const photo of current.photos) deleteStoredPhoto(photo.file.uri);
 	await deleteReport(current.local_id);
+}
+
+/**
+ * Make a failed report eligible again. `sync_error` means "will not retry by
+ * itself"; a person pressing Try again is the release valve - the 403s that
+ * land here are assignment and account state a managing agent can put right,
+ * and the same report then goes through unchanged.
+ *
+ * Guarded on the failure still being recorded, freshly read: a report that is
+ * mid-recovery or already sent has nothing to clear, and a repeated tap after
+ * the first is a no-op. Returns whether anything changed, so the caller knows
+ * whether a pass is worth asking for.
+ */
+export async function clearReportFailure(localId: string): Promise<boolean> {
+	const report = await getReport(localId);
+	if (!report?.sync_error) return false;
+	await saveReport({ ...report, sync_error: undefined });
+	return true;
+}
+
+/**
+ * Discard a FAILED report: its row and every photo byte it holds, permanently.
+ *
+ * Only a report whose failure is still recorded can be discarded - checked
+ * against the database at the moment of the call, not against what a screen
+ * was rendering. That guard is what makes this race-free: a failed report is
+ * never offered to the engine, so nothing can be mid-push while it is
+ * discarded, and a report that was retried (or that already reached the
+ * server and left the queue) is a silent no-op rather than a deletion of
+ * files an in-flight upload still needs. Nothing here talks to the network:
+ * if the create already landed server-side, the server keeps its record and
+ * this only ever removes the local copy.
+ */
+export async function discardReport(localId: string): Promise<boolean> {
+	const report = await getReport(localId);
+	if (!report?.sync_error) return false;
+	for (const photo of report.photos) deleteStoredPhoto(photo.file.uri);
+	await deleteReport(localId);
+	return true;
 }
 
 /** This report's task id, so a screen can pick its own result out of a pass. */

@@ -1,5 +1,5 @@
 import { goBack } from "@/lib/nav";
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { SentReport } from "@/api/report";
 import { Button } from "@/components/Button";
@@ -50,7 +50,7 @@ function Body({ reports }: { reports: ReportsView }) {
 		>
 			{/* Local first, and rendered whatever the server is doing. */}
 			{pending.map((report) => (
-				<PendingRow key={report.local_id} report={report} />
+				<PendingRow key={report.local_id} report={report} onRetry={reports.retry} onDiscard={reports.discard} />
 			))}
 
 			{error && sent.length === 0 && pending.length === 0 ? (
@@ -71,8 +71,25 @@ function Body({ reports }: { reports: ReportsView }) {
 	);
 }
 
-/** Still on the phone. Says so plainly rather than looking like it was sent. */
-function PendingRow({ report }: { report: PendingReport }) {
+/** The one confirm in this flow. Deliberately spare: the site names which
+ *  report, and the words say exactly what is lost - the note itself is on the
+ *  card underneath, not repeated into an alert. */
+function confirmDiscard(report: PendingReport, onDiscard: (localId: string) => void): void {
+	const where = report.site_name.trim() || "this site";
+	Alert.alert(
+		"Discard unsent report?",
+		`This report for ${where} has not been sent. Discarding it will permanently remove the report and its photos from this device.`,
+		[
+			{ text: "Cancel", style: "cancel" },
+			{ text: "Discard", style: "destructive", onPress: () => onDiscard(report.local_id) },
+		],
+	);
+}
+
+/** Still on the phone. Says so plainly rather than looking like it was sent.
+ *  A failed one gets its two ways out: try again, or give the report up along
+ *  with its photos. Waiting rows get neither - the queue owns those. */
+function PendingRow({ report, onRetry, onDiscard }: { report: PendingReport; onRetry: (id: string) => void; onDiscard: (id: string) => void }) {
 	const photos = report.photos.length;
 	const waiting = unsyncedPhotoCount(report);
 	const failed = report.sync_error;
@@ -99,6 +116,12 @@ function PendingRow({ report }: { report: PendingReport }) {
 						? `Saved on this phone. ${waiting} photo${waiting === 1 ? "" : "s"} still to send.`
 						: "Saved on this phone. It goes up when you have signal."}
 			</Text>
+			{failed ? (
+				<View style={styles.actions}>
+					<Button label="Try again" variant="ghost" size="sm" onPress={() => onRetry(report.local_id)} />
+					<Button label="Discard" variant="ghost" size="sm" onPress={() => confirmDiscard(report, onDiscard)} />
+				</View>
+			) : null}
 		</View>
 	);
 }
@@ -147,4 +170,5 @@ const styles = StyleSheet.create({
 	meta: { fontFamily: fonts.body, fontSize: 13, color: colors.plateMuted },
 	note: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: colors.plateInk },
 	status: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 19, color: colors.plateMuted },
+	actions: { flexDirection: "row", gap: space.s2, marginTop: space.s1 },
 });

@@ -33,7 +33,16 @@ function useNow(): number {
  * server computes from the two stamps. A phone whose clock is wrong should not
  * be able to shorten or lengthen a shift.
  */
-export function OnSiteCard({ session, busy, onCheckOut }: { session: AttendanceSession; busy: boolean; onCheckOut: () => void }) {
+interface OnSiteCardProps {
+	session: AttendanceSession;
+	busy: boolean;
+	onCheckOut: () => void;
+	/** Clear the recorded send failure and ask the queue to try again. Only
+	 *  consulted when the session carries one. */
+	onRetrySync?: () => void;
+}
+
+export function OnSiteCard({ session, busy, onCheckOut, onRetrySync }: OnSiteCardProps) {
 	const now = useNow();
 	const elapsed = Math.round((now - session.check_in.at) / 1000);
 
@@ -48,8 +57,20 @@ export function OnSiteCard({ session, busy, onCheckOut }: { session: AttendanceS
 			</View>
 
 			{/* Said plainly rather than hidden behind a sync icon. Someone who
-			    checked in underground should know the record is on the phone. */}
-			{session.synced_in ? null : <Text style={styles.pending}>Saved on this phone. It goes up when you have signal.</Text>}
+			    checked in underground should know the record is on the phone -
+			    and someone whose check-in was REFUSED must not be promised it
+			    will send itself, because it will not. The record is evidence of
+			    a shift, so it stays on the phone either way; what changes is
+			    whether anything happens without them. */}
+			{session.sync_error ? (
+				<>
+					<Text style={styles.failed}>{`This visit couldn't be recorded - ${session.sync_error.message}`}</Text>
+					<Text style={styles.pending}>It stays saved on this phone. Checking out still works.</Text>
+					{onRetrySync ? <Button label="Try again" variant="ghost" size="sm" onPress={onRetrySync} /> : null}
+				</>
+			) : session.synced_in ? null : (
+				<Text style={styles.pending}>Saved on this phone. It goes up when you have signal.</Text>
+			)}
 
 			<Button label="Check out" busy={busy} block onPress={onCheckOut} />
 		</View>
@@ -72,4 +93,5 @@ const styles = StyleSheet.create({
 	name: { fontFamily: fonts.displayHeavy, fontSize: 20, color: colors.plateInk },
 	timer: { fontFamily: fonts.mono, fontSize: 22, color: colors.plateInk },
 	pending: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: colors.plateMuted },
+	failed: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 19, color: colors.fail },
 });

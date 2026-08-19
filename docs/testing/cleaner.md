@@ -124,3 +124,27 @@ home, `OFFLINE` with sites cached.
 **Expected:** (a) The site is fixed (no picker) and the report is linked to the attendance
 session. (b) A site picker over the **cached** sites list - composing and queueing a report works
 fully offline. Full report behaviour: REPORT suite.
+
+### CLEAN-013 - A refused check-in is honest, not hopeful
+
+**Steps:** Break the account server-side (Studio: `cleaners.active = false`, or unassign the
+site), then check in. Restore the account and tap **Try again**.
+
+**Expected:** The on-site card drops the "It goes up when you have signal" promise and states
+the truth: "This visit couldn't be recorded - <the broker's reason>", "It stays saved on this
+phone. Checking out still works." with a **Try again** button. Checking out genuinely still
+works. After the account is put right, Try again sends the same check-in - exactly once
+(idempotent client id) - and the card returns to normal. The honest state survives an app
+restart.
+
+### CLEAN-014 - A failed closed shift surfaces on the home, and cannot be discarded
+
+**Steps:** With a synced check-in, break the account and check out. Let the push fail. Restore
+the account; tap **Try again** on the notice.
+
+**Expected:** One notice on the cleaner home: "A visit to <site> couldn't be recorded", the
+reason, "It stays saved on this phone.", and **Try again** - nothing else. **There is no discard
+anywhere for attendance**: a shift record is evidence, and it stays on the phone until it sends
+or an explicit support mechanism reconciles it. Try again after the fix lands both ends
+server-side and the notice clears itself. Diagnostics counts the failed row under "needs
+attention" while it exists.

@@ -15,7 +15,7 @@
 // so a retry after a lost response costs one request and changes nothing.
 
 import { unfixable } from "@/api/errors";
-import { deleteAttendance, saveAttendance } from "@/db/attendance";
+import { allAttendance, deleteAttendance, saveAttendance } from "@/db/attendance";
 import type { AttendanceSession } from "@/db/types";
 import { checkIn, checkOut } from "@/api/cleaner";
 
@@ -89,6 +89,25 @@ async function push(session: AttendanceSession, onProgress: (session: Attendance
 	// Both ends are on the server, which is now the record of what happened.
 	// The local row exists to survive a dead signal, and that job is done.
 	await deleteAttendance(current.local_id);
+}
+
+/**
+ * Make a failed session eligible again. Attendance is evidence: there is
+ * deliberately NO discard counterpart to this - a shift record that could not
+ * be sent stays on the phone until it can be, or until some explicit support
+ * mechanism reconciles it. The failures that land here are mostly account and
+ * assignment state (deactivated, unassigned) that a managing agent can put
+ * right, after which the identical payload goes through - idempotent on its
+ * client id, so retrying can never record a shift twice.
+ *
+ * Guarded on the failure still being recorded, so repeated taps are no-ops
+ * and a session that already recovered is left alone.
+ */
+export async function clearAttendanceFailure(localId: string): Promise<boolean> {
+	const session = (await allAttendance()).find((s) => s.local_id === localId);
+	if (!session?.sync_error) return false;
+	await saveAttendance({ ...session, sync_error: undefined });
+	return true;
 }
 
 /** This session's task id, so a screen can pick its own result out of a pass. */

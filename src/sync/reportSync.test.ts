@@ -11,7 +11,7 @@ import * as reportsDb from "@/db/reports";
 import type { PendingReport, ReportPhoto } from "@/db/types";
 
 import { setQueueOwner } from "./owner";
-import { createReportSource, pendingPhotoTotal, pushReport, reportHasWork } from "./reportSync";
+import { clearReportFailure, createReportSource, discardReport, pendingPhotoTotal, pushReport, reportHasWork } from "./reportSync";
 
 jest.mock("@/api/report");
 jest.mock("@/db/reports");
@@ -235,4 +235,59 @@ test("a report queued while signed out is kept sendable", async () => {
 	await expect(pushReport(report())).rejects.toThrow();
 
 	expect(saved().every((r) => !r.sync_error)).toBe(true);
+});
+
+describe("manual recovery", () => {
+	const failed = () => report({ sync_error: { message: "Block not assigned to you.", at: 1 } });
+
+	test("Try again clears the failure, and the report is eligible again - exactly once", async () => {
+		db.getReport.mockResolvedValue(failed());
+
+		expect(await clearReportFailure("rep-1")).toBe(true);
+		const cleared = db.saveReport.mock.calls[0][0];
+		expect(cleared.sync_error).toBeUndefined();
+		expect(reportHasWork(cleared)).toBe(true);
+
+		// The second tap finds nothing to clear: the row already has no failure.
+		db.getReport.mockResolvedValue(cleared);
+		expect(await clearReportFailure("rep-1")).toBe(false);
+		expect(db.saveReport).toHaveBeenCalledTimes(1);
+	});
+
+	test("clearing a report that already left the queue is a no-op", async () => {
+		db.getReport.mockResolvedValue(undefined);
+		expect(await clearReportFailure("rep-1")).toBe(false);
+		expect(db.saveReport).not.toHaveBeenCalled();
+	});
+
+	test("discard removes the row and every photo byte, and talks to no server", async () => {
+		db.getReport.mockResolvedValue({ ...failed(), photos: [photo(1), photo(2, refFor(2))] });
+
+		expect(await discardReport("rep-1")).toBe(true);
+
+		// Both files go - the one that never uploaded and the one that did.
+		expect(store.deleteStoredPhoto).toHaveBeenCalledWith("file://1.jpg");
+		expect(store.deleteStoredPhoto).toHaveBeenCalledWith("file://2.jpg");
+		expect(db.deleteReport).toHaveBeenCalledWith("rep-1");
+		// If the create already landed server-side, the server keeps its record;
+		// nothing here can file, refile or delete anything remotely.
+		expect(api.createReport).not.toHaveBeenCalled();
+		expect(api.uploadReportPhoto).not.toHaveBeenCalled();
+	});
+
+	test("discard refuses a report that is not failed - it may be mid-flight", async () => {
+		// The guard IS the race safety: a failed report is never offered to the
+		// engine, so only rows nothing can be pushing are discardable.
+		db.getReport.mockResolvedValue(report({ photos: [photo(1)] }));
+
+		expect(await discardReport("rep-1")).toBe(false);
+		expect(store.deleteStoredPhoto).not.toHaveBeenCalled();
+		expect(db.deleteReport).not.toHaveBeenCalled();
+	});
+
+	test("discarding a report that already synced away is a no-op", async () => {
+		db.getReport.mockResolvedValue(undefined);
+		expect(await discardReport("rep-1")).toBe(false);
+		expect(db.deleteReport).not.toHaveBeenCalled();
+	});
 });

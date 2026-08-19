@@ -22,6 +22,11 @@ const mockAttendance = { current: {} as Record<string, unknown> };
 jest.mock("@/cleaner/useAttendance", () => ({ useAttendance: () => mockAttendance.current }));
 jest.mock("@/data/useDuties", () => ({ useDuties: () => ({ duties: [], loading: false, refresh: jest.fn() }) }));
 jest.mock("@/cleaner/useChecksSubmitted", () => ({ useChecksSubmitted: () => ({ hit: false, dismiss: jest.fn() }) }));
+const mockFailedShifts = { current: { failed: [], retry: jest.fn() } as { failed: unknown[]; retry: jest.Mock } };
+jest.mock("@/cleaner/useFailedShifts", () => ({ useFailedShifts: () => mockFailedShiftsRef().current }));
+function mockFailedShiftsRef() {
+	return mockFailedShifts;
+}
 
 const site = (over: Partial<CleanerSite>): CleanerSite => ({
 	id: "s1",
@@ -43,7 +48,8 @@ const onSiteAt = (siteName: string) => ({
 	synced_out: false,
 });
 
-async function show(view: Partial<SitesView>, attendance: Record<string, unknown> = {}) {
+async function show(view: Partial<SitesView>, attendance: Record<string, unknown> = {}, failedShifts: unknown[] = []) {
+	mockFailedShifts.current = { failed: failedShifts, retry: jest.fn() };
 	mockAttendance.current = {
 		active: null,
 		justClosed: null,
@@ -148,5 +154,37 @@ describe("when the sites list fails but the cleaner is on site", () => {
 
 		expect(screen.getByText("Elm Court")).toBeTruthy();
 		expect(screen.getByText("Loading your sites")).toBeTruthy();
+	});
+});
+
+describe("a shift whose record could not be sent", () => {
+	const failedShift = {
+		local_id: "bad-1",
+		site_id: "s1",
+		site_name: "Elm Court",
+		cleaner_email: null,
+		check_in: { lat: 51.5, lng: -0.1, accuracy: 8, at: 1 },
+		check_out: { lat: 51.5, lng: -0.1, accuracy: 8, at: 2 },
+		server_id: null,
+		synced_in: true,
+		synced_out: false,
+		sync_error: { message: "Your account is not active. Ask your managing agent.", at: 3 },
+	};
+
+	test("is surfaced on the home with the reason and a Try again - never a discard", async () => {
+		await show({ sites: [site({})] }, {}, [failedShift]);
+
+		expect(screen.getByText("A visit to Elm Court couldn't be recorded")).toBeTruthy();
+		expect(screen.getByText(/Your account is not active/)).toBeTruthy();
+		expect(screen.getByText(/It stays saved on this phone/)).toBeTruthy();
+		expect(screen.queryByText("Discard")).toBeNull();
+
+		fireEvent.press(screen.getByText("Try again"));
+		expect(mockFailedShifts.current.retry).toHaveBeenCalledWith("bad-1");
+	});
+
+	test("no failed shifts, no banner", async () => {
+		await show({ sites: [site({})] });
+		expect(screen.queryByText(/couldn't be recorded/)).toBeNull();
 	});
 });

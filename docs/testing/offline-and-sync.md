@@ -22,6 +22,12 @@ feature suites (WIZ-021..024, CLEAN-006/007, REPORT-005/007/008/010) and are not
 
 Unit-tested exhaustively; the device tests below cover what units cannot.
 
+A recorded permanent failure means "will not retry **by itself**", not "impossible forever":
+every queue offers a manual **Try again** that clears the record and asks for one pass (visits
+on the blocked summary, reports on the failed row, attendance on the card/notice). Reports also
+offer **Discard**; attendance deliberately never does (evidence); visits never need it (the
+token is spent).
+
 ### SYNC-001 - Every trigger wakes the queue
 
 **Preconditions:** Something queued (a report is easiest), `OFFLINE`.

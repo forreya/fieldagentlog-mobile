@@ -18,6 +18,7 @@ import { freshnessLabel } from "@/data/useDashboard";
 import { useFind } from "@/data/useFind";
 import { useAttendance, type AttendanceView } from "@/cleaner/useAttendance";
 import { useChecksSubmitted } from "@/cleaner/useChecksSubmitted";
+import { useFailedShifts, type FailedShiftsView } from "@/cleaner/useFailedShifts";
 import { useDuties, type DutiesView } from "@/data/useDuties";
 import { useSites, type SitesView } from "@/data/useSites";
 import { useSyncStatus } from "@/sync/useSyncStatus";
@@ -44,6 +45,7 @@ export function CleanerHome() {
 	const attendance = useAttendance(user ? { id: user.id, email: user.email ?? null } : null);
 	const duties = useDuties(attendance.active?.site_id ?? null);
 	const checksSubmitted = useChecksSubmitted();
+	const failedShifts = useFailedShifts(user?.id ?? null);
 
 	return (
 		<Screen
@@ -58,7 +60,7 @@ export function CleanerHome() {
 			signedInAs={email}
 			scroll={false}
 		>
-			<Body sites={sites} attendance={attendance} duties={duties} checksSubmitted={checksSubmitted} />
+			<Body sites={sites} attendance={attendance} duties={duties} checksSubmitted={checksSubmitted} failedShifts={failedShifts} />
 		</Screen>
 	);
 }
@@ -71,9 +73,10 @@ interface BodyProps {
 	attendance: AttendanceView;
 	duties: DutiesView;
 	checksSubmitted: { hit: boolean; dismiss: () => void };
+	failedShifts: FailedShiftsView;
 }
 
-function Body({ sites, attendance, duties, checksSubmitted }: BodyProps) {
+function Body({ sites, attendance, duties, checksSubmitted, failedShifts }: BodyProps) {
 	const find = useFind(sites.sites ?? NO_SITES);
 
 	return (
@@ -96,7 +99,8 @@ function Body({ sites, attendance, duties, checksSubmitted }: BodyProps) {
 				/>
 			) : null}
 			<AttendanceBanners attendance={attendance} />
-			<OnSite attendance={attendance} duties={duties} />
+			<FailedShifts shifts={failedShifts} />
+			<OnSite attendance={attendance} duties={duties} retrySync={failedShifts.retry} />
 
 			<SiteList sites={sites} find={find} attendance={attendance} />
 		</ScrollView>
@@ -188,13 +192,37 @@ function AttendanceBanners({ attendance }: { attendance: AttendanceView }) {
 	);
 }
 
+/** Shifts whose record could not be sent. Attendance is evidence, so the only
+ *  offer is Try again - there is deliberately no way to make one of these go
+ *  away without it reaching the server. */
+function FailedShifts({ shifts }: { shifts: FailedShiftsView }) {
+	return (
+		<>
+			{shifts.failed.map((s) => (
+				<Note
+					key={s.local_id}
+					title={`A visit to ${s.site_name} couldn't be recorded`}
+					body={`${s.sync_error?.message ?? ""} It stays saved on this phone.`}
+				>
+					<Button label="Try again" variant="ghost" onPress={() => shifts.retry(s.local_id)} />
+				</Note>
+			))}
+		</>
+	);
+}
+
 /** Everything that only exists while somebody is standing in a building. */
-function OnSite({ attendance, duties }: { attendance: AttendanceView; duties: DutiesView }) {
+function OnSite({ attendance, duties, retrySync }: { attendance: AttendanceView; duties: DutiesView; retrySync: (localId: string) => void }) {
 	const session = attendance.active;
 	if (!session) return null;
 	return (
 		<>
-			<OnSiteCard session={session} busy={attendance.busy} onCheckOut={() => void attendance.checkOut()} />
+			<OnSiteCard
+				session={session}
+				busy={attendance.busy}
+				onCheckOut={() => void attendance.checkOut()}
+				onRetrySync={session.sync_error ? () => retrySync(session.local_id) : undefined}
+			/>
 			<DutiesCard duties={duties.duties} busy={attendance.startingChecks} onStart={() => void attendance.startChecks()} />
 			{/* The block is not in question here, and the report is tied to the
 			    visit in progress - the local id, because a check-in still sitting

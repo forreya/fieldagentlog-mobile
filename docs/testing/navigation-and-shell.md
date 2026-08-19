@@ -31,9 +31,10 @@ goes where it says, and the menu dismisses on outside-tap. Sign out behaves per 
 
 **Expected:** About names the app version, build and which backend it is connected to (host only,
 never keys) - the things worth quoting when reporting a problem. Diagnostics (reached from
-About): backend host, database schema version and journal mode, queue counts (attendance,
-reports), photo-store bytes, sync/connectivity state, update state, crash-reporting state. It
-renders even when storage will not open.
+About): backend host, database schema version and journal mode, per-queue state lines
+("N waiting · N need attention", plus "N another account's" only when present - counts only,
+never another account's content), photo-store bytes, sync/connectivity state, update state,
+crash-reporting state. It renders even when storage will not open.
 
 ### NAV-005 - The update row never lies
 
