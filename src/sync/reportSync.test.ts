@@ -10,6 +10,7 @@ import * as photoStore from "@/db/photoStore";
 import * as reportsDb from "@/db/reports";
 import type { PendingReport, ReportPhoto } from "@/db/types";
 
+import { setQueueOwner } from "./owner";
 import { createReportSource, pendingPhotoTotal, pushReport, reportHasWork } from "./reportSync";
 
 jest.mock("@/api/report");
@@ -183,6 +184,46 @@ describe("the source", () => {
 
 		expect(source.name).toBe("reports");
 		expect(tasks.map((t) => t.id)).toEqual(["report:a", "report:c"]);
+	});
+});
+
+describe("who a report belongs to", () => {
+	// The server files a report as whoever's JWT carries the create, so another
+	// account's queued report is HELD - never filed under the wrong name, and
+	// never marked permanently failed just because the wrong person is signed in.
+	afterEach(() => setQueueOwner(null));
+
+	test("another account's report is held, not offered and not failed", async () => {
+		setQueueOwner("user-b");
+		const source = createReportSource(async () => [report({ local_id: "a", owner_user_id: "user-a" })]);
+
+		expect(await source.pending()).toEqual([]);
+		expect(db.saveReport).not.toHaveBeenCalled();
+	});
+
+	test("the same report is offered again when its owner signs back in", async () => {
+		const rows = async () => [report({ local_id: "a", owner_user_id: "user-a" })];
+
+		setQueueOwner("user-b");
+		expect(await createReportSource(rows).pending()).toEqual([]);
+
+		setQueueOwner("user-a");
+		expect((await createReportSource(rows).pending()).map((t) => t.id)).toEqual(["report:a"]);
+	});
+
+	test("a report from before ownership existed still goes up under whoever is signed in", async () => {
+		setQueueOwner("user-b");
+		const source = createReportSource(async () => [report({ local_id: "legacy" })]);
+		expect((await source.pending()).map((t) => t.id)).toEqual(["report:legacy"]);
+	});
+
+	test("its own queue and the held one coexist: only the owner's work is offered", async () => {
+		setQueueOwner("user-b");
+		const source = createReportSource(async () => [
+			report({ local_id: "theirs", owner_user_id: "user-a" }),
+			report({ local_id: "mine", owner_user_id: "user-b" }),
+		]);
+		expect((await source.pending()).map((t) => t.id)).toEqual(["report:mine"]);
 	});
 });
 

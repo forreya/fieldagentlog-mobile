@@ -39,8 +39,9 @@ export function CleanerHome() {
 	const { state } = useAuth();
 	const sync = useSyncStatus();
 	const sites = useSites();
-	const email = state.status === "signed_in" ? (state.user.email ?? undefined) : undefined;
-	const attendance = useAttendance(email ?? null);
+	const user = state.status === "signed_in" ? state.user : null;
+	const email = user?.email ?? undefined;
+	const attendance = useAttendance(user ? { id: user.id, email: user.email ?? null } : null);
 	const duties = useDuties(attendance.active?.site_id ?? null);
 	const checksSubmitted = useChecksSubmitted();
 

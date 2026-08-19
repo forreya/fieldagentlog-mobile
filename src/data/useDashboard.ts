@@ -18,9 +18,12 @@ import type { DashboardData } from "@/shared/fireData";
 
 import { failureMessage } from "./failureMessage";
 
-/** Keyed by persona: a staff member and an agent see different block sets, and
- *  a shared cache key would hand one the other's list after a re-login. */
-export const dashboardKey = (role: UserRole) => ["dashboard", role] as const;
+/** Keyed by user AND persona: a staff member and an agent see different block
+ *  sets, and two different accounts see different ones again. A shared cache
+ *  key would hand one person the other's list after a re-login on the same
+ *  phone - the user id makes that impossible even for a persisted cache that
+ *  was never cleaned up. */
+export const dashboardKey = (userId: string, role: UserRole) => ["dashboard", userId, role] as const;
 
 /** Staff read the database directly under RLS; agents have no database access
  *  at all and go through the broker. Same assembled shape either way. */
@@ -47,8 +50,9 @@ export function useDashboard(): DashboardView {
 	// to the broker is the safer of the two - it can only ever return blocks the
 	// caller is actually assigned.
 	const role: UserRole = state.status === "signed_in" ? state.role : "agent";
+	const userId = state.status === "signed_in" ? state.user.id : "anon";
 
-	const query = useQuery({ queryKey: dashboardKey(role), queryFn: sourceFor(role) });
+	const query = useQuery({ queryKey: dashboardKey(userId, role), queryFn: sourceFor(role) });
 
 	return {
 		data: query.data ?? null,

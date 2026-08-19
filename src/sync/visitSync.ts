@@ -131,7 +131,12 @@ export async function pushVisit(record: VisitRecord): Promise<void> {
 	}
 }
 
-/** Whether this visit has anything left to push. */
+/** Whether this visit has anything left to push.
+ *
+ *  Deliberately NOT gated on the queue owner: a visit authenticates with its
+ *  own token, not a session, so it belongs to the device and sends correctly
+ *  whoever - if anyone - is signed in. Gating it would strand an inspection
+ *  captured before a sign-out. */
 export async function visitHasWork(record: VisitRecord): Promise<boolean> {
 	if (record.submitted) return false;
 	// Nothing here can succeed until someone acts: uploading its photos would

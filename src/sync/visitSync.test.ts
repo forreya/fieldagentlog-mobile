@@ -11,6 +11,7 @@ import { addPendingPhoto, getPhoto, pendingPhotosForToken } from "@/db/photos";
 import type { VisitRecord } from "@/db/types";
 import { loadVisit, saveVisit } from "@/db/visits";
 
+import { setQueueOwner } from "./owner";
 import { createVisitSource, pushVisit, readyToSubmit, visitHasWork } from "./visitSync";
 
 jest.mock("expo-sqlite");
@@ -254,5 +255,19 @@ describe("the engine source", () => {
 		await queuePhoto("p1", "photos-only");
 		const source = createVisitSource(async () => [record({ token: "photos-only", results: withPhoto("c1", "p1") })]);
 		expect(await source.pending()).toHaveLength(1);
+	});
+
+	test("visits are not gated on who is signed in - the token is the credential", async () => {
+		// Attendance and reports are held while their owner is away, because the
+		// broker attributes them to the live JWT. A visit authenticates with its
+		// own token, so it must keep sending whoever - if anyone - is signed in;
+		// gating it would strand an inspection captured before a sign-out.
+		setQueueOwner("somebody-else-entirely");
+		try {
+			const source = createVisitSource(async () => [record({ token: "queued", submit_requested_at: 1 })]);
+			expect((await source.pending()).map((t) => t.id)).toEqual(["visit:queued"]);
+		} finally {
+			setQueueOwner(null);
+		}
 	});
 });

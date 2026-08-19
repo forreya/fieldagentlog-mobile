@@ -11,7 +11,11 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { useQueryClient } from "@tanstack/react-query";
+
 import { onSessionExpired } from "@/api/session";
+import { clearPersistedReadCache } from "@/data/queryClient";
+import { setQueueOwner } from "@/sync/owner";
 import { requestSync } from "@/sync/triggers";
 
 import { signInMessage } from "./messages";
@@ -93,6 +97,10 @@ export async function endSession(): Promise<void> {
 		// either way, which is what signing out means here.
 	}
 	await forgetRole();
+	// The queues stay - they belong to the device - but they stop being
+	// pushable: there is no session to push under, and whatever arrives next
+	// may belong to somebody else.
+	setQueueOwner(null);
 	// The client deliberately OUTLIVES the sign-out. AuthProvider subscribes to
 	// onAuthStateChange once, on the instance it captured at mount; dropping the
 	// cached client here meant the next sign-in built a second instance and
@@ -106,8 +114,13 @@ export async function endSession(): Promise<void> {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const [state, setState] = useState<AuthState>(() => (supabaseConfigured() ? { status: "loading" } : { status: "unconfigured" }));
+	const queries = useQueryClient();
 
 	const adopt = useCallback(async (session: Session | null) => {
+		// The queues learn who is signed in BEFORE any pass runs: work captured
+		// under another account is held while it is not theirs to send, and the
+		// broker would otherwise attribute it to whoever's JWT carries it.
+		setQueueOwner(session?.user?.id ?? null);
 		setState(await personaFor(session));
 		// A session arriving is a sync trigger in its own right.
 		//
@@ -141,8 +154,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 	const signOut = useCallback(async () => {
 		setState({ status: "signed_out" });
-		await endSession();
-	}, []);
+		// The read cache is this user's data. Dropped in memory and at rest, so
+		// the next account on this phone starts from nothing - not from the
+		// last user's block list. (Every user-owned key also carries the user
+		// id, so even a missed cleanup could not hydrate across accounts.)
+		queries.clear();
+		await Promise.all([clearPersistedReadCache(), endSession()]);
+	}, [queries]);
 
 	const retryRole = useCallback(async () => {
 		const { data } = await getSupabase().auth.getSession();

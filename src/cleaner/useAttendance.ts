@@ -20,8 +20,15 @@ import type { AttendanceSession, GeoPoint } from "@/db/types";
 import { uuid } from "@/lib/id";
 import { captureFix, fixMessage } from "@/lib/position";
 import { syncEngine } from "@/sync/engine";
+import { visibleToUser } from "@/sync/owner";
 
 import { markHandoff } from "./handoff";
+
+/** Who the screen is working for. The id goes on every session it creates. */
+export interface AttendanceOwner {
+	id: string;
+	email: string | null;
+}
 
 export interface AttendanceView {
 	/** The session in progress, or null when not on site. */
@@ -45,9 +52,14 @@ export interface AttendanceView {
 	dismissClosed: () => void;
 }
 
-/** The open session among what the device holds, if any. */
-export function openSession(sessions: AttendanceSession[]): AttendanceSession | null {
-	return sessions.find((s) => s.check_out === null) ?? null;
+/** The open session among what the device holds, if any.
+ *
+ *  Another account's open session is invisible here: showing it would leak
+ *  their whereabouts, and "checking out" of it would send a check-out the
+ *  broker refuses as not-your-session. A session with no recorded owner
+ *  predates ownership and stays visible, as it always was. */
+export function openSession(sessions: AttendanceSession[], ownerId: string | null): AttendanceSession | null {
+	return sessions.find((s) => s.check_out === null && visibleToUser(s.owner_user_id, ownerId)) ?? null;
 }
 
 /**
@@ -55,16 +67,16 @@ export function openSession(sessions: AttendanceSession[]): AttendanceSession | 
  * assuming it starts empty. Someone who checked in this morning and then killed
  * the app is still on site, and the phone is the only thing that knows.
  */
-function useRestoreOpenSession(setActive: (session: AttendanceSession | null) => void): void {
+function useRestoreOpenSession(setActive: (session: AttendanceSession | null) => void, ownerId: string | null): void {
 	useEffect(() => {
 		let cancelled = false;
 		void allAttendance().then((sessions) => {
-			if (!cancelled) setActive(openSession(sessions));
+			if (!cancelled) setActive(openSession(sessions, ownerId));
 		});
 		return () => {
 			cancelled = true;
 		};
-	}, [setActive]);
+	}, [setActive, ownerId]);
 }
 
 /**
@@ -83,12 +95,13 @@ function useRestoreOpenSession(setActive: (session: AttendanceSession | null) =>
 function useFollowSync(
 	setActive: (session: AttendanceSession | null) => void,
 	setJustClosed: (update: (previous: AttendanceSession | null) => AttendanceSession | null) => void,
+	ownerId: string | null,
 ): void {
 	useEffect(
 		() =>
 			syncEngine.subscribe(() => {
 				void allAttendance().then((sessions) => {
-					setActive(openSession(sessions));
+					setActive(openSession(sessions, ownerId));
 					// The closed one is deleted by the queue once both ends land, so
 					// its absence is what proves it is fully up.
 					setJustClosed((previous) => {
@@ -97,21 +110,24 @@ function useFollowSync(
 					});
 				});
 			}),
-		[setActive, setJustClosed],
+		[setActive, setJustClosed, ownerId],
 	);
 }
 
-function newSession(siteId: string, siteName: string, email: string | null, point: GeoPoint): AttendanceSession {
+function newSession(siteId: string, siteName: string, owner: AttendanceOwner, point: GeoPoint): AttendanceSession {
 	return {
 		local_id: uuid(),
 		site_id: siteId,
 		site_name: siteName,
-		cleaner_email: email,
+		cleaner_email: owner.email,
 		check_in: point,
 		check_out: null,
 		server_id: null,
 		synced_in: false,
 		synced_out: false,
+		// Stamped at capture: this shift may outlive the session that started
+		// it, and it must only ever go up as this person.
+		owner_user_id: owner.id,
 	};
 }
 
@@ -189,14 +205,15 @@ function useEndVisit({ active, busy, fix, setActive, setBusy, setError, setJustC
 	}, [active, busy, fix, setActive, setBusy, setError, setJustClosed]);
 }
 
-export function useAttendance(email: string | null): AttendanceView {
+export function useAttendance(owner: AttendanceOwner | null): AttendanceView {
 	const [active, setActive] = useState<AttendanceSession | null>(null);
 	const [justClosed, setJustClosed] = useState<AttendanceSession | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const ownerId = owner?.id ?? null;
 
-	useRestoreOpenSession(setActive);
-	useFollowSync(setActive, setJustClosed);
+	useRestoreOpenSession(setActive, ownerId);
+	useFollowSync(setActive, setJustClosed, ownerId);
 
 	const fix = useCallback(async (): Promise<GeoPoint | null> => {
 		const outcome = await captureFix();
@@ -207,14 +224,16 @@ export function useAttendance(email: string | null): AttendanceView {
 
 	const startVisit = useCallback(
 		async (siteId: string, siteName: string) => {
-			if (busy || active) return;
+			// No signed-in owner, no check-in: a session with nobody's name on it
+			// could later go up as whoever signs in next.
+			if (busy || active || !owner) return;
 			setBusy(true);
 			setError(null);
 			try {
 				const point = await fix();
 				if (!point) return;
 
-				const session = newSession(siteId, siteName, email, point);
+				const session = newSession(siteId, siteName, owner, point);
 				await saveAttendance(session);
 				setActive(session);
 				// Fire and forget: the timer is already running on screen and the
@@ -224,7 +243,7 @@ export function useAttendance(email: string | null): AttendanceView {
 				setBusy(false);
 			}
 		},
-		[active, busy, email, fix],
+		[active, busy, owner, fix],
 	);
 
 	const endVisit = useEndVisit({ active, busy, fix, setActive, setBusy, setError, setJustClosed });

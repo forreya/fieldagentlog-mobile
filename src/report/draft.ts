@@ -48,6 +48,7 @@ export function toPendingReport(
 	site: { id: string; name: string },
 	point: GeoPoint | null,
 	attendanceClientId: string | null,
+	ownerUserId: string | null,
 	now: number = Date.now(),
 ): PendingReport {
 	const photos: ReportPhoto[] = draft.photos.map((photo) => ({ local_id: photo.local_id, file: photo.file, ref: null }));
@@ -63,5 +64,8 @@ export function toPendingReport(
 		at: now,
 		point,
 		attendance_client_id: attendanceClientId,
+		// Stamped at capture, never at send: the queue outlives the session,
+		// and this is what stops it going up under somebody else's name.
+		owner_user_id: ownerUserId,
 	};
 }

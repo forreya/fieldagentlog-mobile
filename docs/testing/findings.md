@@ -5,20 +5,6 @@ from the tests so that a regression run does not mistake a known wart for a fres
 a stable id the tests reference. When one is fixed, update the referencing test and remove the
 entry.
 
-### FIND-001 - Cross-user read-cache leakage on a shared device
-
-**Probable data-leakage risk.** The persisted read cache (dashboards, cleaner sites, sent
-reports, block history) is keyed by **role**, not by user, and is not cleared on sign-out. Sign
-out as staff user A, sign in as staff user B of a _different organisation_ on the same device:
-B's first render serves A's cached blocks, and if the cache is fresh (under the 5-minute stale
-time) no refetch corrects it. Same shape for the sent-reports list.
-
-Mitigations in place: same-account multi-device sharing is the designed-for case (AUTH-008), the
-cache ages out at 24h, and RLS/broker still gate every actual request - the leak is of cached
-list data on the device, not of server access. Still: what one signed-in user sees belongs to
-their account. **Expected behaviour needs a decision** (clear the query cache on sign-out, or key
-caches by user id). Until then AUTH-010 marks this ⚠️.
-
 ### FIND-002 - `block-visits` 500s on the local harness
 
 The `field-agent` broker's `block-visits` action selects `fire_visits.started_at`, which no

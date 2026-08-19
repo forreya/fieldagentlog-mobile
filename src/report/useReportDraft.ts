@@ -7,6 +7,7 @@
 
 import { useCallback, useState } from "react";
 
+import { useAuth } from "@/auth/AuthProvider";
 import { saveReport } from "@/db/reports";
 import { uuid } from "@/lib/id";
 import type { ReportCategory } from "@/db/types";
@@ -39,6 +40,10 @@ export interface ReportDraftView {
  * rule like the note, not a reason to refuse to render the form.
  */
 export function useReportDraft(site: { id: string; name: string } | null, attendanceClientId: string | null): ReportDraftView {
+	const { state } = useAuth();
+	// Who this report will belong to. The queue outlives the session, so the
+	// owner is recorded on the row at capture time (see db/types.ts).
+	const ownerUserId = state.status === "signed_in" ? state.user.id : null;
 	const [draft, setDraft] = useState<Draft>(emptyDraft);
 	const [busy, setBusy] = useState(false);
 	const [tried, setTried] = useState(false);
@@ -81,13 +86,13 @@ export function useReportDraft(site: { id: string; name: string } | null, attend
 			// worst, and a report with a position is worth more to whoever picks
 			// it up. It never blocks the report itself - null is a fine answer.
 			const point = await captureReportFix();
-			await saveReport(toPendingReport(draft, site, point, attendanceClientId));
+			await saveReport(toPendingReport(draft, site, point, attendanceClientId, ownerUserId));
 			void syncEngine.sync("report");
 			return true;
 		} finally {
 			setBusy(false);
 		}
-	}, [attendanceClientId, busy, draft, site]);
+	}, [attendanceClientId, busy, draft, site, ownerUserId]);
 
 	return {
 		draft,

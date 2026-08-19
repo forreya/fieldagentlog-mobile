@@ -120,7 +120,7 @@ one test above. Areas reviewed and their homes:
   (BLOCK-002/010) · auth (AUTH).
 - Persisted state: SQLite queues + photo files (SYNC, WIZ-015, CLEAN-007, REPORT-005) · session
   (AUTH-006) · role cache (AUTH-009/010) · handoff + submitted markers (CLEAN-011) · query cache
-  (BLOCK-005, AUTH-010/FIND-001).
+  (BLOCK-005, AUTH-010).
 - Background behaviour: sync triggers (SYNC-001) · orphan sweep (SYNC-006) · OTA (NAV-006).
 - Not covered because it does not exist: notifications (FIND-006); OTA drill pending a real
   build (FIND-009); upstream harness gap for block history (FIND-002).

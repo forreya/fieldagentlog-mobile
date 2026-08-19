@@ -11,8 +11,10 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { loadSiteDuties, type CleanerDuty } from "@/api/cleaner";
+import { useAuth } from "@/auth/AuthProvider";
 
-export const dutiesKey = (siteId: string) => ["site-duties", siteId] as const;
+/** Keyed by user as well as site - same rule as every user-owned read. */
+export const dutiesKey = (userId: string, siteId: string) => ["site-duties", userId, siteId] as const;
 
 export interface DutiesView {
 	duties: CleanerDuty[];
@@ -21,8 +23,10 @@ export interface DutiesView {
 }
 
 export function useDuties(siteId: string | null): DutiesView {
+	const { state } = useAuth();
+	const userId = state.status === "signed_in" ? state.user.id : "anon";
 	const query = useQuery({
-		queryKey: dutiesKey(siteId ?? "none"),
+		queryKey: dutiesKey(userId, siteId ?? "none"),
 		queryFn: () => loadSiteDuties(siteId as string),
 		enabled: siteId !== null,
 	});

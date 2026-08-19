@@ -98,17 +98,22 @@ are a normal deployment here).
 - On later launches with no network, the **cached** role from the last successful resolution is
   used silently (no role-unknown screen).
 
-### AUTH-010 - Role cache and read cache across user switches
+### AUTH-010 - Account switching leaves nothing behind
 
-**Steps:** Sign in as `USER-STAFF`, load blocks. Sign out. Sign in as `USER-AGENT`.
+**Steps:** Sign in as `USER-STAFF` and load blocks so the cache is fresh. Sign out. Sign in as
+`USER-AGENT`. Repeat with a stale cache (wait past the stale time), and repeat the switch
+`OFFLINE`.
 
 **Expected:**
 
-- The agent sees agent data. The cached role from the staff user is never applied to the agent
-  (the cache is keyed by user id).
-- ⚠️ Behaviour requires clarification: the **persisted read cache** (dashboards, sites, sent
-  reports) is keyed by role, not user, and is not cleared on sign-out - see findings.md
-  (FIND-001) before judging what user B sees in the first seconds after switching.
+- B's first paint is a loading state (online) or B's own data - **never A's lists, even
+  transiently**. Sign-out clears the in-memory query cache and the persisted snapshot, and every
+  user-owned query key carries the user id, so a snapshot that somehow survived cleanup still
+  cannot hydrate under another account.
+- The cached role from the staff user is never applied to the agent (keyed by user id).
+- Work queued by A stays on the device but is neither shown to B nor sent under B's session -
+  SYNC-008 is the full test.
+- App termination and relaunch at any point in the switch changes none of the above.
 
 ### AUTH-011 - Route guard
 

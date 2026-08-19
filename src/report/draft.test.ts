@@ -43,6 +43,7 @@ describe("becoming a pending report", () => {
 			site,
 			point,
 			null,
+			"user-a",
 			123,
 		);
 
@@ -61,20 +62,27 @@ describe("becoming a pending report", () => {
 	test("the timestamp is when it was raised, not when it will sync", () => {
 		// A report queued underground on Friday and sent on Monday happened on
 		// Friday, and the managing agent needs to see Friday.
-		const report = toPendingReport(draft({ note: "x" }), site, null, null, 1_700_000_000_000);
+		const report = toPendingReport(draft({ note: "x" }), site, null, null, "user-a", 1_700_000_000_000);
 		expect(report.at).toBe(1_700_000_000_000);
 	});
 
 	test("no position is a fine answer", () => {
-		expect(toPendingReport(draft({ note: "x" }), site, null, null).point).toBeNull();
+		expect(toPendingReport(draft({ note: "x" }), site, null, null, "user-a").point).toBeNull();
 	});
 
 	test("links to the cleaning visit when raised during one", () => {
-		expect(toPendingReport(draft({ note: "x" }), site, null, "att-1").attendance_client_id).toBe("att-1");
+		expect(toPendingReport(draft({ note: "x" }), site, null, "att-1", "user-a").attendance_client_id).toBe("att-1");
 	});
 
 	test("every photo starts with no server ref - that is the queue's job", () => {
-		const report = toPendingReport(draft({ note: "x", photos: [photo(1), photo(2)] }), site, null, null);
+		const report = toPendingReport(draft({ note: "x", photos: [photo(1), photo(2)] }), site, null, null, "user-a");
 		expect(report.photos.every((p) => p.ref === null)).toBe(true);
+	});
+
+	test("carries the user who raised it, stamped at capture", () => {
+		// The queue outlives the session. Without this stamp a report queued by
+		// one account would be FILED as whoever signed in next - the server
+		// attributes the create to the JWT that carries it.
+		expect(toPendingReport(draft({ note: "x" }), site, null, null, "user-a").owner_user_id).toBe("user-a");
 	});
 });

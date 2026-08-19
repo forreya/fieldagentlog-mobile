@@ -7,9 +7,12 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { loadBlockVisits, type BlockVisit } from "@/api/agent";
+import { useAuth } from "@/auth/AuthProvider";
 import { failureMessage } from "./failureMessage";
 
-export const blockVisitsKey = (blockId: string) => ["block-visits", blockId] as const;
+/** Keyed by user as well as block: what one account may see of a block's past
+ *  is not what another may, and a persisted cache must respect that. */
+export const blockVisitsKey = (userId: string, blockId: string) => ["block-visits", userId, blockId] as const;
 
 export interface VisitHistoryView {
 	visits: BlockVisit[];
@@ -19,8 +22,10 @@ export interface VisitHistoryView {
 }
 
 export function useBlockVisits(blockId: string): VisitHistoryView {
+	const { state } = useAuth();
+	const userId = state.status === "signed_in" ? state.user.id : "anon";
 	const query = useQuery({
-		queryKey: blockVisitsKey(blockId),
+		queryKey: blockVisitsKey(userId, blockId),
 		queryFn: () => loadBlockVisits(blockId),
 		enabled: Boolean(blockId),
 	});

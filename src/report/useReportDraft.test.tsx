@@ -12,6 +12,9 @@ import { MAX_PHOTOS } from "./draft";
 import { useReportDraft } from "./useReportDraft";
 
 jest.mock("@/db/reports");
+jest.mock("@/auth/AuthProvider", () => ({
+	useAuth: () => ({ state: { status: "signed_in", user: { id: "user-reporter" }, role: "cleaner" } }),
+}));
 jest.mock("@/lib/position");
 jest.mock("@/visit/photos");
 jest.mock("@/sync/engine", () => ({ syncEngine: { sync: jest.fn() } }));
@@ -73,7 +76,9 @@ test("a valid report is saved and queued, in that order", async () => {
 	});
 
 	expect(sent).toBe(true);
-	expect(db.saveReport).toHaveBeenCalledWith(expect.objectContaining({ site_id: "s1", note: "Bin store door won't latch.", point: FIX }));
+	expect(db.saveReport).toHaveBeenCalledWith(
+		expect.objectContaining({ site_id: "s1", note: "Bin store door won't latch.", point: FIX, owner_user_id: "user-reporter" }),
+	);
 	// Persisted before the engine hears about it: a sync that runs first has
 	// nothing to find.
 	expect(db.saveReport.mock.invocationCallOrder[0]).toBeLessThan(engine.sync.mock.invocationCallOrder[0]);

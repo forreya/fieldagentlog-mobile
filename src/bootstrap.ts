@@ -19,6 +19,19 @@ import { createReportSource } from "@/sync/reportSync";
 import { createVisitSource } from "@/sync/visitSync";
 
 /**
+ * Every photo file some queue still needs: visit photos from their own table,
+ * and report photos from inside the report rows. Both live in the same
+ * directory, and the sweep deletes whatever it is not shown - so this list
+ * being complete is what stands between a queued capture and a hole in it.
+ * A report held for an absent owner can wait here for days; its photos wait
+ * with it.
+ */
+export async function referencedPhotoUris(): Promise<string[]> {
+	const [photos, reports] = await Promise.all([allPhotos(), allReports()]);
+	return [...photos.map((photo) => photo.file.uri), ...reports.flatMap((report) => report.photos.map((photo) => photo.file.uri))];
+}
+
+/**
  * Delete photo files nothing refers to any more.
  *
  * Runs at startup rather than after each visit because the cases that leave
@@ -27,10 +40,10 @@ import { createVisitSource } from "@/sync/visitSync";
  * phone is full, which a user experiences as the camera failing.
  */
 async function sweepOrphanPhotos(): Promise<void> {
-	// Every row in the table, not just visits opened this launch. The sweep
+	// Every row in every table, not just visits opened this launch. The sweep
 	// deletes whatever it is not shown, so a narrower list would destroy the
-	// queued photos of a visit finished offline before they ever uploaded.
-	sweepOrphans((await allPhotos()).map((photo) => photo.file.uri));
+	// queued photos of a visit or report finished offline before they uploaded.
+	sweepOrphans(await referencedPhotoUris());
 }
 
 let started = false;

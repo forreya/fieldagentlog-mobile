@@ -89,13 +89,27 @@ Hard to stage on a healthy device. The contract: bootstrap never throws; with no
 wizard still runs online-only. If a corrupted-storage device is ever available: the app opens,
 the wizard works with signal, Diagnostics reports storage unavailable rather than crashing.
 
-### SYNC-008 - Sign-out and the queues
+### SYNC-008 - Sign-out, account switching and queue ownership
 
-**Steps:** Queue attendance/reports; sign out (offline); sign back in; restore signal.
+Queued attendance and reports carry the id of the user who captured them, because the broker
+attributes every write to the JWT that carries it. Visits are exempt: token-owned, they send
+whoever is signed in.
 
-**Expected:** The queues are untouched by sign-out - the work belongs to the device, is keyed for
-idempotent replay, and sends after the new session arrives. See findings FIND-001 for the
-cross-**user** caveat.
+**Steps:** As `USER-CLEANER`, queue a report (and an attendance session) with the backend
+unreachable. Sign out. Sign in as `USER-AGENT` with the backend reachable and trigger passes
+(foreground, capture, `FORCE-STOP` + cold start). Sign back in as `USER-CLEANER`.
+
+**Expected:**
+
+- Sign-out leaves the queues on the device; they simply stop being pushable.
+- Under the agent: the cleaner's items are **not sent** (verify server-side: no new rows), not
+  shown in the agent's pending list, badge or counts, and **not marked failed** - held, exactly
+  as they were. The agent's own captures queue and send normally alongside them, and another
+  account's open attendance session never appears on the cleaner home.
+- The moment the cleaner signs back in, their items send with no further action and land
+  attributed to them (`reporter_user_id` / `cleaner_user_id` in Studio).
+- Rows written by builds from before ownership existed carry no owner and keep the old
+  behaviour: they send under whoever is signed in, and remain visible.
 
 ### SYNC-009 - The read cache is honest about age
 

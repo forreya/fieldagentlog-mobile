@@ -20,9 +20,14 @@ import type { PendingReport } from "@/db/types";
 import { unsyncedPhotoCount } from "@/db/types";
 
 import type { SyncSource, SyncTask } from "./engine";
+import { ownedByQueueOwner } from "./owner";
 
 /** True while the report still owes the server something. */
 export function reportHasWork(report: PendingReport): boolean {
+	// Not this user's report: held until its owner signs back in. The server
+	// files a report as whoever's JWT carries the create, so sending it now
+	// would put the wrong name on it.
+	if (!ownedByQueueOwner(report.owner_user_id)) return false;
 	return !report.sync_error;
 }
 

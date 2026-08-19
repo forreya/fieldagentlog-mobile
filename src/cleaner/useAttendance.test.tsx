@@ -56,7 +56,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 async function mounted() {
-	const view = await renderHook(() => useAttendance("cleaner@example.test"));
+	const view = await renderHook(() => useAttendance({ id: "user-cleaner", email: "cleaner@example.test" }));
 	await waitFor(() => expect(db.allAttendance).toHaveBeenCalled());
 	return view;
 }
@@ -67,7 +67,14 @@ test("checking in saves before it syncs, and the timer starts immediately", asyn
 	await act(async () => void (await result.current.checkIn("site-1", "Elm Court")));
 
 	const saved = db.saveAttendance.mock.calls[0][0];
-	expect(saved).toMatchObject({ site_id: "site-1", site_name: "Elm Court", check_in: FIX, check_out: null, synced_in: false });
+	expect(saved).toMatchObject({
+		site_id: "site-1",
+		site_name: "Elm Court",
+		check_in: FIX,
+		check_out: null,
+		synced_in: false,
+		owner_user_id: "user-cleaner",
+	});
 	expect(result.current.active).toMatchObject({ site_name: "Elm Court" });
 	// Persisted before the engine is asked to do anything about it. Order, not
 	// just occurrence: a sync that runs first has nothing to find.
@@ -176,11 +183,23 @@ describe("openSession", () => {
 	const open = { check_out: null, local_id: "open" } as AttendanceSession;
 
 	test("finds the one still running", () => {
-		expect(openSession([closed, open])?.local_id).toBe("open");
+		expect(openSession([closed, open], "user-cleaner")?.local_id).toBe("open");
 	});
 
 	test("returns null when every session is finished", () => {
-		expect(openSession([closed, closed])).toBeNull();
+		expect(openSession([closed, closed], "user-cleaner")).toBeNull();
+	});
+
+	test("another account's open session is invisible", () => {
+		// Showing it would leak their whereabouts, and checking out of it would
+		// send a check-out the broker refuses as not-your-session.
+		const foreign = { check_out: null, local_id: "foreign", owner_user_id: "user-b" } as AttendanceSession;
+		expect(openSession([foreign], "user-cleaner")).toBeNull();
+	});
+
+	test("an ownerless session predates ownership and stays visible", () => {
+		const legacy = { check_out: null, local_id: "legacy" } as AttendanceSession;
+		expect(openSession([legacy], "user-cleaner")?.local_id).toBe("legacy");
 	});
 });
 

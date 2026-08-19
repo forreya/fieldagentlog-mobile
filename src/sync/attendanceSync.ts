@@ -20,11 +20,18 @@ import type { AttendanceSession } from "@/db/types";
 import { checkIn, checkOut } from "@/api/cleaner";
 
 import type { SyncSource, SyncTask } from "./engine";
+import { ownedByQueueOwner } from "./owner";
 
 /** True while either end is still owed to the server AND there is any prospect
  *  of it landing. A session that failed permanently is kept - the record is
  *  still evidence of a shift - but it is never offered again. */
 export function attendanceHasWork(session: AttendanceSession): boolean {
+	// Not this user's shift: held, untouched, until its owner signs back in.
+	// Pushing it now would file the check-in as the wrong person, and the
+	// broker refuses a check-out for somebody else's session outright - which
+	// unfixable() would then record as a permanent failure on a session that
+	// is perfectly sendable by its owner.
+	if (!ownedByQueueOwner(session.owner_user_id)) return false;
 	if (session.sync_error) return false;
 	if (!session.synced_in) return true;
 	return session.check_out !== null && !session.synced_out;

@@ -19,8 +19,9 @@ jest.mock("@/api/agent");
 jest.mock("@/api/staff");
 
 const mockRole = { current: "agent" as "agent" | "staff" };
+const mockUserId = { current: "u1" };
 jest.mock("@/auth/AuthProvider", () => ({
-	useAuth: () => ({ state: { status: "signed_in", user: { id: "u1" }, role: mockRole.current } }),
+	useAuth: () => ({ state: { status: "signed_in", user: { id: mockUserId.current }, role: mockRole.current } }),
 }));
 
 const api = agentApi as jest.Mocked<typeof agentApi>;
@@ -55,6 +56,7 @@ function wrapper() {
 beforeEach(() => {
 	jest.clearAllMocks();
 	mockRole.current = "agent";
+	mockUserId.current = "u1";
 });
 
 test("says it is loading before anything has arrived", async () => {
@@ -146,8 +148,33 @@ describe("which source a persona reads from", () => {
 		const { result } = await renderHook(() => useDashboard(), { wrapper: Wrapper });
 		await waitFor(() => expect(result.current.data).toEqual(data));
 
-		expect(client.getQueryData(["dashboard", "agent"])).toEqual(data);
-		expect(client.getQueryData(["dashboard", "staff"])).toBeUndefined();
+		expect(client.getQueryData(["dashboard", "u1", "agent"])).toEqual(data);
+		expect(client.getQueryData(["dashboard", "u1", "staff"])).toBeUndefined();
+	});
+
+	test("two accounts do not share a cache entry, even with the same role", async () => {
+		// The account boundary itself. The cache is persisted to disk, so without
+		// the user id in the key, whoever signs in next on this phone would be
+		// served the LAST user's block list - instantly, and with no refetch to
+		// correct it while the entry was still fresh.
+		const { client, Wrapper } = wrapper();
+		api.loadAgentDashboard.mockResolvedValue(data);
+
+		// User A loads their blocks; the entry is fresh, not stale.
+		const a = await renderHook(() => useDashboard(), { wrapper: Wrapper });
+		await waitFor(() => expect(a.result.current.data).toEqual(data));
+		a.unmount();
+
+		// User B signs in on the same device, same persona.
+		mockUserId.current = "u2";
+		api.loadAgentDashboard.mockResolvedValue({ ...data, blocks: [] });
+		const b = await renderHook(() => useDashboard(), { wrapper: Wrapper });
+
+		// B never sees A's list - not even as a first paint while loading.
+		expect(b.result.current.data).toBeNull();
+		await waitFor(() => expect(b.result.current.data).toEqual({ ...data, blocks: [] }));
+		expect(client.getQueryData(["dashboard", "u1", "agent"])).toEqual(data);
+		expect(client.getQueryData(["dashboard", "u2", "agent"])).toEqual({ ...data, blocks: [] });
 	});
 });
 

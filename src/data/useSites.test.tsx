@@ -11,6 +11,9 @@ import { ApiError } from "@/api/errors";
 import { useSites } from "./useSites";
 
 jest.mock("@/api/cleaner");
+jest.mock("@/auth/AuthProvider", () => ({
+	useAuth: () => ({ state: { status: "signed_in", user: { id: "u1" }, role: "cleaner" } }),
+}));
 
 const api = cleanerApi as jest.Mocked<typeof cleanerApi>;
 
@@ -85,6 +88,6 @@ test("cleaner sites do not share a cache entry with the blocks dashboard", async
 	const { result } = await renderHook(() => useSites(), { wrapper: Wrapper });
 	await waitFor(() => expect(result.current.sites).toEqual(sites));
 
-	expect(client.getQueryData(["cleaner-sites"])).toEqual(sites);
+	expect(client.getQueryData(["cleaner-sites", "u1"])).toEqual(sites);
 	expect(client.getQueryData(["dashboard", "cleaner"])).toBeUndefined();
 });

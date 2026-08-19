@@ -13,8 +13,12 @@
 // with its own listeners. A mock that returned a single shared object would
 // pass whether or not the bug was present.
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { Pressable, Text } from "react-native";
+
+import { queueOwner } from "@/sync/owner";
 
 import { AuthProvider, useAuth } from "./AuthProvider";
 import { resetSupabase } from "./supabase";
@@ -108,12 +112,18 @@ beforeEach(() => {
 });
 
 async function mount() {
+	// The provider clears the read cache on sign-out, so it lives under a query
+	// client here exactly as it does in the app.
+	const client = new QueryClient();
 	await render(
-		<AuthProvider>
-			<Probe />
-		</AuthProvider>,
+		<QueryClientProvider client={client}>
+			<AuthProvider>
+				<Probe />
+			</AuthProvider>
+		</QueryClientProvider>,
 	);
 	await waitFor(() => expect(screen.getByText("signed_out")).toBeTruthy());
+	return client;
 }
 
 test("signing in, out, and in again all land on a signed-in state", async () => {
@@ -156,6 +166,30 @@ test("the mock really does break the listener when the client is replaced", asyn
 // the fix. Without a nudge here the queue waits for an unrelated trigger, which
 // on device meant a report sitting through a whole signed-in session and only
 // leaving at the next foreground.
+test("signing out clears the read cache, its snapshot, and the queue owner", async () => {
+	// The whole point of the account boundary: whoever signs in next starts
+	// from nothing - not from this user's block list, and not able to push
+	// this user's queued work.
+	const client = await mount();
+
+	pressSignIn();
+	await waitFor(() => expect(screen.getByText("in:cleaner")).toBeTruthy());
+	expect(queueOwner()).toBe("u1");
+
+	// Fresh cached data and a persisted snapshot, exactly as a used app holds.
+	client.setQueryData(["dashboard", "u1", "staff"], { blocks: [] });
+	await AsyncStorage.setItem("fa.query", '{"clientState":{}}');
+
+	pressSignOut();
+	await waitFor(() => expect(screen.getByText("signed_out")).toBeTruthy());
+
+	await waitFor(async () => {
+		expect(client.getQueryData(["dashboard", "u1", "staff"])).toBeUndefined();
+		expect(await AsyncStorage.getItem("fa.query")).toBeNull();
+		expect(queueOwner()).toBeNull();
+	});
+});
+
 test("a session arriving nudges the sync queue", async () => {
 	await mount();
 	expect(mockRequestSync).not.toHaveBeenCalled();

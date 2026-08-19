@@ -13,11 +13,12 @@ import { getDatabase, resetDatabase } from "@/db/database";
 import { addPendingPhoto } from "@/db/photos";
 import { sweepOrphans } from "@/db/photoStore";
 import type { PendingPhoto, VisitRecord } from "@/db/types";
+import { saveReport } from "@/db/reports";
 import { allVisits, saveVisit } from "@/db/visits";
 import { syncEngine } from "@/sync/engine";
 import { createVisitSource } from "@/sync/visitSync";
 
-import { bootstrap, resetBootstrap } from "./bootstrap";
+import { bootstrap, referencedPhotoUris, resetBootstrap } from "./bootstrap";
 
 jest.mock("expo-sqlite");
 jest.mock("@/db/photoStore", () => ({ sweepOrphans: jest.fn(), deleteStoredPhoto: jest.fn() }));
@@ -94,6 +95,30 @@ describe("the startup photo sweep", () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
 		expect(sweep).toHaveBeenCalledWith([]);
+	});
+
+	test("keeps a queued report's photos - they share the directory with visit photos", async () => {
+		// The sweep deletes whatever it is not shown. A report can wait on this
+		// phone for days - offline, or held for an owner who is signed out - and
+		// its photos have to still be there when it finally goes.
+		await addPendingPhoto(photo());
+		await saveReport({
+			local_id: "rep-1",
+			site_id: "site-1",
+			site_name: "Elm Court",
+			category: "repairs",
+			note: "Door closer hanging off.",
+			photos: [
+				{ local_id: "rp1", file: { uri: "file:///photos/rp1.jpg", name: "rp1.jpg", type: "image/jpeg" }, ref: null },
+				{ local_id: "rp2", file: { uri: "file:///photos/rp2.jpg", name: "rp2.jpg", type: "image/jpeg" }, ref: null },
+			],
+			at: 1_000,
+			point: null,
+			attendance_client_id: null,
+			owner_user_id: "user-away",
+		});
+
+		expect(await referencedPhotoUris()).toEqual(["file:///photos/p1.jpg", "file:///photos/rp1.jpg", "file:///photos/rp2.jpg"]);
 	});
 });
 

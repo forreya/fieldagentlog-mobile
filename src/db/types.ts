@@ -86,6 +86,11 @@ export interface AttendanceSession {
 	 *  mid-shift. Persisted so the queue stops offering a task that can only
 	 *  fail, exactly as `submit_error` does for a visit. */
 	sync_error?: { message: string; at: number };
+	/** The user this session was captured under. The broker attributes both
+	 *  ends to the JWT that carries them, so this must only ever be pushed
+	 *  while its owner is the signed-in user. Absent on rows from builds that
+	 *  predate ownership - those keep the old push-under-anyone behaviour. */
+	owner_user_id?: string | null;
 }
 
 /** Coarse routing hint chosen on the phone. Mirrors the server's CHECK constraint. */
@@ -136,6 +141,10 @@ export interface PendingReport {
 	 *  unassigned from the block, or the block was deleted. Persisted so the
 	 *  queue stops offering a task that can only fail. */
 	sync_error?: { message: string; at: number };
+	/** The user who raised it. The server files the report as whoever's JWT
+	 *  carries the create, so this must only ever be pushed while its owner is
+	 *  the signed-in user. Absent on rows from builds that predate ownership. */
+	owner_user_id?: string | null;
 }
 
 /** How many photos on a report still hold bytes that have not uploaded. */

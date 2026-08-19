@@ -12,6 +12,8 @@ import { addPendingPhoto, pendingPhotosForToken } from "@/db/photos";
 import type { PendingPhoto, VisitRecord } from "@/db/types";
 import { allVisits, saveVisit } from "@/db/visits";
 
+import { queueOwner, setQueueOwner } from "@/sync/owner";
+
 import { endSession } from "./AuthProvider";
 import { recallRole, rememberRole } from "./roleCache";
 
@@ -58,12 +60,16 @@ test("leaves a queued visit and its photo exactly where they were", async () => 
 	await saveVisit(record);
 	await addPendingPhoto(photo);
 	await rememberRole("u1", "cleaner");
+	setQueueOwner("u1");
 
 	await endSession();
 
 	// The session is gone...
 	expect(mockSignOut).toHaveBeenCalledTimes(1);
 	expect(await recallRole("u1")).toBeNull();
+	// ...and the queues, though kept, have stopped being pushable: there is no
+	// session to push under, and whoever signs in next may be somebody else.
+	expect(queueOwner()).toBeNull();
 
 	// ...and the work is not.
 	const held = await allVisits();

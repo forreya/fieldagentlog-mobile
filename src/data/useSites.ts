@@ -11,10 +11,13 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { loadCleanerSites, type CleanerSite } from "@/api/cleaner";
+import { useAuth } from "@/auth/AuthProvider";
 
 import { failureMessage } from "./failureMessage";
 
-export const sitesKey = ["cleaner-sites"] as const;
+/** Keyed by user: two cleaners sharing a phone work for two companies, and a
+ *  persisted cache must never hand one the other's sites. */
+export const sitesKey = (userId: string) => ["cleaner-sites", userId] as const;
 
 export interface SitesView {
 	sites: CleanerSite[] | null;
@@ -30,7 +33,9 @@ export interface SitesView {
 }
 
 export function useSites(): SitesView {
-	const query = useQuery({ queryKey: sitesKey, queryFn: loadCleanerSites });
+	const { state } = useAuth();
+	const userId = state.status === "signed_in" ? state.user.id : "anon";
+	const query = useQuery({ queryKey: sitesKey(userId), queryFn: loadCleanerSites });
 
 	return {
 		sites: query.data ?? null,

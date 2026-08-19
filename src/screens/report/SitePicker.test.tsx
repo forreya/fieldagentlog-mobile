@@ -16,6 +16,9 @@ import { ReportIssue } from "./ReportIssue";
 
 jest.mock("expo-router", () => ({ router: { back: jest.fn(), replace: jest.fn(), canGoBack: () => true } }));
 jest.mock("@/lib/nav", () => ({ goBack: jest.fn() }));
+jest.mock("@/auth/AuthProvider", () => ({
+	useAuth: () => ({ state: { status: "signed_in", user: { id: "u1" }, role: "cleaner" } }),
+}));
 jest.mock("@/sync/useSyncStatus", () => ({ useSyncStatus: () => ({ online: true, syncing: false, pending: 0 }) }));
 
 const mockSites = { current: {} as SitesView };

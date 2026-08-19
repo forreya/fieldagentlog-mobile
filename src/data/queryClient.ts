@@ -38,8 +38,27 @@ export function createQueryClient(): QueryClient {
 	});
 }
 
+const PERSIST_KEY = "fa.query";
+
 export function createPersister() {
-	return createAsyncStoragePersister({ storage: AsyncStorage, key: "fa.query" });
+	return createAsyncStoragePersister({ storage: AsyncStorage, key: PERSIST_KEY });
+}
+
+/**
+ * Drop the persisted snapshot. Called on sign-out: signing out is deliberate,
+ * and the read cache is that user's data at rest in plain AsyncStorage - it
+ * must not wait 24 hours to age off a shared phone.
+ *
+ * Belt and braces, not the whole defence: every user-owned query key also
+ * carries the user id, so a snapshot that somehow survives can never hydrate
+ * under another account anyway.
+ */
+export async function clearPersistedReadCache(): Promise<void> {
+	try {
+		await AsyncStorage.removeItem(PERSIST_KEY);
+	} catch {
+		/* storage refused; the user-scoped keys still make the snapshot inert */
+	}
 }
 
 export const persistOptions = { maxAge: MAX_AGE_MS } as const;

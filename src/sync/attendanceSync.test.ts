@@ -12,6 +12,7 @@ import { ApiError } from "@/api/errors";
 import type { AttendanceSession, GeoPoint } from "@/db/types";
 
 import { attendanceHasWork, createAttendanceSource, pushAttendance } from "./attendanceSync";
+import { setQueueOwner } from "./owner";
 
 jest.mock("@/api/cleaner");
 jest.mock("@/db/attendance");
@@ -142,6 +143,48 @@ describe("the source", () => {
 
 	test("an empty device offers no work", async () => {
 		const source = createAttendanceSource(async () => []);
+		expect(await source.pending()).toEqual([]);
+	});
+});
+
+describe("who a session belongs to", () => {
+	// The broker attributes both ends to the JWT that carries them, and refuses
+	// a check-out for somebody else's session outright. So another account's
+	// queued shift is HELD - never sent as the wrong person, and never recorded
+	// as permanently failed just because the wrong person is signed in.
+	afterEach(() => setQueueOwner(null));
+
+	test("another account's session is held, not offered and not failed", async () => {
+		setQueueOwner("user-b");
+		const source = createAttendanceSource(async () => [session({ local_id: "a", owner_user_id: "user-a" })]);
+
+		expect(await source.pending()).toEqual([]);
+		// Held means untouched: nothing recorded a failure on it.
+		expect(db.saveAttendance).not.toHaveBeenCalled();
+	});
+
+	test("the same session is offered again when its owner signs back in", async () => {
+		const rows = async () => [session({ local_id: "a", owner_user_id: "user-a" })];
+
+		setQueueOwner("user-b");
+		expect(await createAttendanceSource(rows).pending()).toEqual([]);
+
+		setQueueOwner("user-a");
+		expect((await createAttendanceSource(rows).pending()).map((t) => t.id)).toEqual(["attendance:a"]);
+	});
+
+	test("a session from before ownership existed still goes up under whoever is signed in", async () => {
+		// Rows written by older builds have no owner. Holding them forever would
+		// be data loss; sending them is exactly what every install did before.
+		setQueueOwner("user-b");
+		const source = createAttendanceSource(async () => [session({ local_id: "legacy" })]);
+		expect((await source.pending()).map((t) => t.id)).toEqual(["attendance:legacy"]);
+	});
+
+	test("with nobody signed in, owned work waits", async () => {
+		// Cold start runs a pass before the stored session is adopted; the
+		// sign-in that follows triggers another, so holding here loses nothing.
+		const source = createAttendanceSource(async () => [session({ local_id: "a", owner_user_id: "user-a" })]);
 		expect(await source.pending()).toEqual([]);
 	});
 });
