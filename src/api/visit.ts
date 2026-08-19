@@ -5,6 +5,7 @@
 import { postVisit, UPLOAD_TIMEOUT_MS, type RequestOptions } from "./client";
 import type { LocalFile, PhotoRef, SubmitBody, SubmitResponse, VisitPacket } from "./contract";
 import { ApiError, deadEndReasonFromVisitStatus, isTerminalVisitStatus } from "./errors";
+import { appendFile } from "./multipart";
 
 type Options = Pick<RequestOptions, "baseUrl">;
 
@@ -27,15 +28,14 @@ export async function fetchPacket(token: string, options: Options = {}): Promise
 /**
  * Upload one photo and get back the opaque ref to cite on submit.
  *
- * The file is streamed from disk by the platform: `file.uri` is a local path,
- * not bytes we have loaded into memory. Ten full-resolution photos held in JS
- * memory is how a field app runs a phone out of it.
+ * One downscaled photo's bytes pass through memory per request, read lazily
+ * by fetch itself - see api/multipart.ts for why the runtime allows nothing
+ * lighter, and why a bare { uri } descriptor cannot be sent at all.
  */
 export async function uploadPhoto(token: string, file: LocalFile, options: Options = {}): Promise<PhotoRef> {
 	const form = new FormData();
-	// The contract names the field `file`. React Native accepts a file
-	// descriptor here, which the DOM typings do not describe.
-	form.append("file", file as unknown as Blob);
+	// The contract names the field `file`.
+	appendFile(form, "file", file);
 	return postVisit<PhotoRef>("/visit-photo", token, { ...options, body: form, timeoutMs: UPLOAD_TIMEOUT_MS });
 }
 

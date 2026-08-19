@@ -68,6 +68,15 @@ it); return.
 the background loses nothing - relaunch restores per WIZ-015 / CLEAN-007). The foreground return
 triggers a sync pass (SYNC-001).
 
+### PLAT-009 - Photo upload is an installed-build release gate
+
+Photo upload must be re-proved on an **installed build of each platform** before any release -
+not in Expo Go, not by unit tests. FIND-011 shipped for months because the runtime's fetch
+rejected the file part before any request was made, and the app classified the throw as "no
+signal": every smoke run saw a photo captured and queued and called it done. Verify the storage
+object and the report/visit row server-side, and check both paths (report photos, visit check
+photos - they share one primitive, so one test per platform covers both).
+
 ### PLAT-008 - Installed-build parity
 
 Before any release: the full smoke checklist ([docs/smoke-checklist.md](../smoke-checklist.md))

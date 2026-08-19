@@ -8,14 +8,15 @@
 
 import { callBroker } from "./broker";
 import type { LocalFile } from "./contract";
+import { appendFile } from "./multipart";
 import { UPLOAD_TIMEOUT_MS } from "./http";
 import type { GeoPoint, ReportCategory, ReportPhotoRef } from "@/db/types";
 
 /** Upload one photo. Returns the ref the report will carry. */
 export async function uploadReportPhoto(blockId: string, file: LocalFile): Promise<ReportPhotoRef> {
 	const form = new FormData();
-	// React Native accepts a file descriptor where the DOM typings want a Blob.
-	form.append("file", file as unknown as Blob);
+	// The same part shape as a visit photo - api/multipart.ts owns why.
+	appendFile(form, "file", file);
 	form.append("block_id", blockId);
 
 	const res = await callBroker<{ ref: string; file_name: string; content_type: string }>("site-report", form, { timeoutMs: UPLOAD_TIMEOUT_MS });

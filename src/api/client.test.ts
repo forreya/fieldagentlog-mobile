@@ -67,6 +67,30 @@ describe("failures", () => {
 		expect(err.timedOut).toBe(false);
 	});
 
+	test("expo fetch's transport failures are network too", async () => {
+		// The winter runtime rejects genuine network failures as FetchError,
+		// whose name is still "Error" - the message prefix is its only marker.
+		mockFetch.mockRejectedValue(new Error("fetch failed: java.net.UnknownHostException: fns.test"));
+		const err = await captureApiError(postVisit("/visit-packet", "t", opts));
+		expect(err.kind).toBe("network");
+		expect(err.retryable).toBe(true);
+	});
+
+	test("a request that could not be BUILT is not weather - it is a bug, and permanent", async () => {
+		// FIND-011: the body converter's throw spent weeks classified as "check
+		// your signal", retrying quietly forever. It must surface as invalid so
+		// the failed-state UI can show it instead of the queue hiding it.
+		const quiet = jest.spyOn(console, "error").mockImplementation(() => undefined);
+		mockFetch.mockRejectedValue(new Error("Unsupported FormDataPart implementation"));
+		const err = await captureApiError(postVisit("/visit-photo", "t", opts));
+		expect(err.kind).toBe("invalid");
+		expect(err.retryable).toBe(false);
+		// The user copy is honest and non-technical; the real cause is logged.
+		expect(err.message).not.toMatch(/FormDataPart|signal/);
+		expect(quiet).toHaveBeenCalled();
+		quiet.mockRestore();
+	});
+
 	test("a non-OK status is classified", async () => {
 		mockFetch.mockResolvedValue(jsonResponse({}, 410));
 		const err = await captureApiError(postVisit("/visit-packet", "t", opts));

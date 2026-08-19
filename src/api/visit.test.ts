@@ -3,6 +3,8 @@ import { ApiError } from "./errors";
 import { captureApiError } from "./testing";
 import { fetchPacket, submitVisit, uploadPhoto } from "./visit";
 
+jest.mock("expo-file-system");
+
 const opts = { baseUrl: "https://fns.test" };
 
 const packet = (status: string): VisitPacket => ({
@@ -72,19 +74,23 @@ describe("uploadPhoto", () => {
 		expect(init.body).toBeInstanceOf(FormData);
 	});
 
-	test("sends the file by reference, never bytes read into memory", async () => {
-		// Asserted at the append() boundary rather than by reading the FormData
-		// back: this suite runs against the DOM's FormData, which stringifies a
-		// file descriptor to "[object Object]". React Native's keeps it and
-		// streams the file from disk - which is the property under test, since
-		// ten full-resolution photos in JS memory is how a field app dies.
+	test("sends a part the runtime's fetch accepts - never the {uri} descriptor", async () => {
+		// FIND-011: Expo's fetch owns global fetch in every build and throws
+		// "Unsupported FormDataPart implementation" on RN's classic descriptor,
+		// before any network I/O. The part must expose bytes()/name/type and
+		// carry no uri - asserted at the append() boundary, since this suite
+		// runs against the DOM's FormData.
 		const append = jest.spyOn(FormData.prototype, "append");
 		respond({ ref: "r" });
 		const file = { uri: "file:///tmp/big.jpg", name: "big.jpg", type: "image/jpeg" };
 
 		await uploadPhoto("tok", file, opts);
 
-		expect(append).toHaveBeenCalledWith("file", file);
+		const [field, part] = append.mock.calls[0] as unknown as [string, Record<string, unknown>];
+		expect(field).toBe("file");
+		expect(part).not.toHaveProperty("uri");
+		expect(typeof part.bytes).toBe("function");
+		expect(part).toMatchObject({ name: "big.jpg", type: "image/jpeg" });
 		append.mockRestore();
 	});
 });

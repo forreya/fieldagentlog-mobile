@@ -35,7 +35,7 @@ first Send attempt. Nothing invalid is ever queued.
 
 **Steps:** Add from camera and library; remove one; deny a permission; cancel the picker.
 
-**Expected:** Same pipeline as the wizard (downscale ≤ 2000 px, rotation normalised). Removal
+**Expected:** Same pipeline as the wizard (downscale ≤ 2000 px, rotation normalised). The upload sends the file as a Blob part carrying the original filename and `image/jpeg` - never React Native's `{uri}` descriptor, which the runtime's fetch refuses (see PLAT-009). Removal
 works before send. Denied → Settings copy; cancelled → nothing. Photo attach works `OFFLINE`
 (camera needs no network).
 

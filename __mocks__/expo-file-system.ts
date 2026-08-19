@@ -80,6 +80,11 @@ export class File {
 	write(contents: string): void {
 		fs.writeFileSync(toPath(this.uri), contents);
 	}
+
+	/** As the real File: the whole file's bytes, read when asked for. */
+	async bytes(): Promise<Uint8Array> {
+		return new Uint8Array(fs.readFileSync(toPath(this.uri)));
+	}
 }
 
 export const Paths = {

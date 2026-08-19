@@ -154,4 +154,16 @@ describe("retryability", () => {
 		expect(err.kind).toBe("network");
 		expect(err.retryable).toBe(true);
 	});
+
+	test("a body that could not be built is invalid, not offline - and not an auth event", async () => {
+		// The broker path matters most here: "network" would retry a
+		// deterministic failure forever, and "auth" would bounce the user to
+		// sign-in for a client bug. Neither is true.
+		const quiet = jest.spyOn(console, "error").mockImplementation(() => undefined);
+		mockFetch.mockRejectedValue(new Error("Unsupported FormDataPart implementation"));
+		const err = await captureApiError(callBroker("site-report", new FormData(), opts));
+		expect(err.kind).toBe("invalid");
+		expect(err.retryable).toBe(false);
+		quiet.mockRestore();
+	});
 });

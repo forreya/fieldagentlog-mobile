@@ -36,6 +36,10 @@ Run the whole visit, not a screen at a time: the bugs live in the joins.
 - [ ] Name and email are required, and a bad email is refused before starting.
 - [ ] Every check advances only when complete; a failure needs a severity and a note.
 - [ ] A photo on a failed check: capture, downscale, thumbnail, replace, remove.
+- [ ] **The photo actually reaches the server** - check the storage object exists, not just that
+      the app said "saved". Until 2026-08-19 no build had ever uploaded one (FIND-011: Expo's
+      fetch rejected React Native's file descriptor, in every build, and the failure wore the
+      network's clothes). Earlier runs of this list ticked capture and queueing, never delivery.
 - [ ] Summary tallies pass/fail/N-A, and tapping a row jumps back to that check.
 - [ ] Submitting online reaches the success screen; the logbook opens in the system browser.
 - [ ] Reopening the same link lands on the locked success screen **with no network request**.

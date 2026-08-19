@@ -7,7 +7,7 @@
 // all" into an ApiError, because a raw fetch rejection tells a caller nothing
 // useful about whether to queue, re-authenticate, or give up.
 
-import { offlineError, timeoutError } from "./errors";
+import { ApiError, offlineError, timeoutError } from "./errors";
 
 /** Long enough for a slow site, short enough that a dead link is not a hang. */
 export const DEFAULT_TIMEOUT_MS = 20_000;
@@ -25,6 +25,22 @@ export interface RawResponse {
 
 export function isFormData(value: unknown): value is FormData {
 	return typeof FormData !== "undefined" && value instanceof FormData;
+}
+
+/**
+ * Whether a fetch rejection means the NETWORK failed, as opposed to the
+ * request never having been buildable at all. Every implementation this app
+ * can run under marks its transport failures:
+ *   - React Native's classic fetch and whatwg-fetch (the test environment)
+ *     reject them as TypeError ("Network request failed");
+ *   - Expo's winter fetch rejects them as FetchError, whose `name` is still
+ *     plain "Error" - its "fetch failed: " message prefix is the only marker
+ *     it offers (expo/src/winter/fetch/FetchErrors.ts).
+ * Anything else never reached the wire.
+ */
+function isTransportFailure(err: unknown): boolean {
+	if (err instanceof TypeError) return true;
+	return err instanceof Error && err.message.startsWith("fetch failed:");
 }
 
 /**
@@ -62,8 +78,17 @@ export async function postJson(
 	let response: Response;
 	try {
 		response = await fetch(url, { method: "POST", headers, body: payload, signal: controller.signal });
-	} catch {
-		throw timedOut ? timeoutError() : offlineError();
+	} catch (err) {
+		if (timedOut) throw timeoutError();
+		if (isTransportFailure(err)) throw offlineError();
+		// The request never went anywhere: fetch refused the body or the URL
+		// before dispatch. FIND-011 spent weeks disguised as "check your
+		// signal" because this case wore the network's clothes and retried
+		// quietly forever. A deterministic construction failure is a client
+		// bug: it surfaces as permanent, with its real cause in the log, where
+		// the failed-state UI and its Try again can show it - not as weather.
+		console.error("postJson: the request could not be built:", err);
+		throw new ApiError("invalid", "Something went wrong preparing this to send. If it keeps happening, update the app.");
 	} finally {
 		clearTimeout(timer);
 	}
