@@ -75,11 +75,12 @@ Worth knowing, because each one looks like an app bug:
   arrives with an empty checklist.
 - **`fire_visits.scope`** is added by the same cleaner migration and read on
   every packet request.
-- **`fire_visits.started_at`** is selected by `block-visits` and written by
-  `visit-submit`, but **no migration in balancebuddy-web creates it** - it
-  exists only in the live database, added out-of-repo. Rebuilding from
-  migrations gives a 500 on block-visits, which the function reports as
-  `{"error":"[object Object]"}`. Worth raising upstream.
+- **`fire_visits.started_at`** is selected by `block-visits` and the staff
+  logbook, and written by `visit-submit`. It spent months existing only in the
+  live database (added out-of-repo), so rebuilding from migrations 500'd
+  block-visits; balancebuddy-web's 0305 now creates it (`IF NOT EXISTS`, so a
+  no-op on the live database) and backfills it from `submitted_payload`. The
+  setup script includes 0305.
 
 - **No RLS on the prelude's tables.** The worst of the four, because it fails
   _upwards_: with RLS off, every persona reads every row, so "staff read the
@@ -131,16 +132,14 @@ What changed in the rebuild, and why it matters:
   in the dashboard, not in a migration, so nothing in the migration set makes
   one. Both photo paths - visit photos and site-report photos - write there, and
   without it every upload fails with "Bucket not found".
-- **`block-visits` fails here, and the cause is upstream.** The `field-agent`
-  broker selects `fire_visits.started_at`, and no migration in balancebuddy-web
-  ever creates that column - 0181 does not, and neither of the later ALTERs
-  (0201, 0219) adds it. PostgREST rejects the select, the broker rethrows the
-  error object, and the mobile block screen shows "Couldn't load past visits".
-  Deliberately NOT patched around in this harness: the column is missing from
-  the migration history, so anything built from it breaks the same way, and
-  hiding that locally would hide it everywhere. The fix belongs in the broker -
-  the value is optional there (`completed_at ?? started_at ?? created_at`), so
-  dropping it from the select costs nothing.
+- **`block-visits` used to fail here, and the cause was upstream.** The
+  `field-agent` broker selects `fire_visits.started_at`, which no migration
+  created - the column had been added to the live database out-of-repo.
+  Deliberately not patched around in this harness while it was broken; fixed
+  properly in balancebuddy-web's 0305 (column + backfill from
+  `submitted_payload`), which this setup script now applies. If block history
+  shows "Couldn't load past visits" on an old stack, re-run `./local/setup.sh
+--reset` to pick 0305 up.
 - **A newly-added function needs `supabase stop` then `start`, not a container
   restart.** The edge runtime enumerates `supabase/functions` once at start, so
   a function copied in afterwards returns "Function not found" however many

@@ -41,6 +41,8 @@ STACK="$HERE/stack"
 #              block_fire_checks.cleaner_assignable that visit-packet selects
 #   0237       field_agent_assignments
 #   0249       site_reports, for Milestone F
+#   0305       fire_visits.started_at - the column block-visits and the staff
+#              logbook select; without it both answer 42703 and history 500s
 MIGRATIONS=(
   0001_init
   0002_rls_base
@@ -57,6 +59,7 @@ MIGRATIONS=(
   0219_cleaner_attendance
   0237_field_agent_assignments
   0249_site_reports
+  0305_fire_visits_started_at
 )
 
 FUNCTIONS=(_shared field-agent cleaner site-report visit-packet visit-photo visit-submit)

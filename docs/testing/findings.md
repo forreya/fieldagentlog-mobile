@@ -5,13 +5,6 @@ from the tests so that a regression run does not mistake a known wart for a fres
 a stable id the tests reference. When one is fixed, update the referencing test and remove the
 entry.
 
-### FIND-002 - `block-visits` 500s on the local harness
-
-The `field-agent` broker's `block-visits` action selects `fire_visits.started_at`, which no
-migration in balancebuddy-web creates. On the harness the action 500s; the app correctly degrades
-(history is one line of text, the block stays usable). Upstream fix filed (balancebuddy-web).
-Until it lands, BLOCK-008's happy path cannot run against the harness.
-
 ### FIND-003 - Android hardware back bypasses the leave-inspection confirm
 
 The in-app leave affordance mid-checks asks for confirmation (WIZ-017). The Android hardware/

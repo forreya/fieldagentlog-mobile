@@ -50,7 +50,7 @@ Tokens are minted by the app itself; there is no fixture file of tokens because 
   overlaps app UI; do not report that as a layout defect.
 - **Local harness quirks** (all documented in docs/local-backend.md): Edge Functions are
   enumerated at `supabase start`, so a new function needs a full stop/start, not a container
-  restart; the `field-agent` broker's `block-visits` action 500s on the harness (upstream schema
-  gap - see findings.md).
+  restart; balancebuddy-web's migration 0305 must be in the stack (`./local/setup.sh` includes
+  it) or `block-visits` and block history 500.
 - Server-side state (did the row land, was the cadence advanced) is verified through the harness's
   Supabase Studio SQL editor, not by trusting the app's own UI.

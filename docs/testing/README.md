@@ -123,6 +123,6 @@ one test above. Areas reviewed and their homes:
   (BLOCK-005, AUTH-010).
 - Background behaviour: sync triggers (SYNC-001) · orphan sweep (SYNC-006) · OTA (NAV-006).
 - Not covered because it does not exist: notifications (FIND-006); OTA drill pending a real
-  build (FIND-009); upstream harness gap for block history (FIND-002).
+  build (FIND-009).
 
 Scenario count: ~106 identified tests, many with enumerated variants.

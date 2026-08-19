@@ -70,10 +70,11 @@ block's data.
 ### BLOCK-008 - Visit history
 
 **Expected:** Past visits show scope (inspection vs cleaner's duties), when, who, pass/fail/N-A
-counts, failures with severity, and a logbook link when there is one. History failing to load is
-one line of text with the block still fully usable - it must never block starting a checklist.
-(On the local harness this action 500s upstream - findings FIND-002; test history against
-whichever backend has the fix.)
+counts, failures with severity, and a logbook link when there is one. Each visit's date prefers
+its completion time, then its start time, then dispatch (verify against Studio if in doubt - the
+three are semantically different, and `fire_visits.started_at` must be set for visits submitted
+by this app). History failing to load is one line of text with the block still fully usable - it
+must never block starting a checklist.
 
 ### BLOCK-009 - Agent starts a checklist
 
