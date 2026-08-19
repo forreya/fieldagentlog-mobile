@@ -55,3 +55,23 @@ NAV-006 cannot be marked as ever-passed until the first drill on a post-`03dea46
 `/gallery` (design gallery) and `/diagnostics` are bundled routes reachable by deep link on any
 build. Nothing sensitive is shown (Diagnostics deliberately names hosts, never keys), so this is
 cosmetic - but NAV-009 exercises them so a future change there does not crash from a cold link.
+
+### FIND-012 - Queued photo files will not survive an iOS app update
+
+Queue rows store each photo's **absolute** `file://` URI. On iOS the app
+container's UUID changes on every app-store/TestFlight update: the files in
+Documents migrate to the new container, but the stored URIs keep pointing at
+the old one. Two consequences on first launch after an update, for any device
+holding un-synced photo work: uploads fail (the path no longer exists), and
+the startup sweep - which lists the CURRENT photo directory and keeps only
+URIs named by rows - sees every migrated file as an orphan and **deletes the
+lot**. A visit then submits without its photos (the dangling-reference
+fallback) and a report retries a missing file forever.
+
+Not triggered by restarts, force-stops or OTA updates - only by a native app
+update over pending work, which is why no test has ever hit it. Build 5 over
+the current internal installs is technically exposed, but build 4 could never
+upload photos, so nothing real is at risk yet. Fix before store release
+(H5): store paths relative to the documents directory and resolve on read, in
+`src/db/photoStore.ts` and the row readers; keep-set and upload then survive
+container moves. Android is unaffected (stable data dir).
