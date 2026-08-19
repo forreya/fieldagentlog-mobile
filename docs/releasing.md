@@ -195,6 +195,14 @@ Worth doing once per SDK bump, on a real build - Expo Go cannot run OTA.
 
 ## Crash reports
 
+`SENTRY_DISABLE_AUTO_UPLOAD=true` sits in the preview and production build
+profiles because the Sentry project does not exist yet: without an org,
+project and auth token the gradle/xcode upload step fails the whole build,
+and with no DSN there are no crash reports for source maps to serve anyway.
+When the Sentry project is created, set `SENTRY_ORG`, `SENTRY_PROJECT` and
+`SENTRY_AUTH_TOKEN` as EAS secrets alongside `EXPO_PUBLIC_SENTRY_DSN`, and
+remove the disable flag in the same change.
+
 Off unless the build is given a DSN. There is no fallback project, so a fork or
 a local run reports nothing.
 

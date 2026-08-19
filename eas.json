@@ -11,14 +11,16 @@
 		"preview": {
 			"distribution": "internal",
 			"env": {
-				"EXPO_PUBLIC_SUPABASE_URL": "https://etkiptvblskvyfzdbsic.supabase.co"
+				"EXPO_PUBLIC_SUPABASE_URL": "https://etkiptvblskvyfzdbsic.supabase.co",
+				"SENTRY_DISABLE_AUTO_UPLOAD": "true"
 			},
 			"channel": "preview"
 		},
 		"production": {
 			"autoIncrement": true,
 			"env": {
-				"EXPO_PUBLIC_SUPABASE_URL": "https://etkiptvblskvyfzdbsic.supabase.co"
+				"EXPO_PUBLIC_SUPABASE_URL": "https://etkiptvblskvyfzdbsic.supabase.co",
+				"SENTRY_DISABLE_AUTO_UPLOAD": "true"
 			},
 			"channel": "production"
 		}
