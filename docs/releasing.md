@@ -113,6 +113,9 @@ Production > create release > roll out.
 
 ## Stage 6 - Every release after
 
+0. **Could this be an update instead?** JavaScript-only changes ship the same
+   day over the air - see *Over-the-air updates* below. The rest of this stage
+   is for anything that touches native code.
 1. **Commit everything first.** EAS builds the working tree, and a build made before the fix you
    just wrote looks identical from the outside. Twice on day one we uploaded a stale binary.
 2. Bump the **patch** in `app.json`: `1.0.0` → `1.0.1`. Gena Go's `1.0.x` convention, one bump per
@@ -137,6 +140,77 @@ Production > create release > roll out.
    pre-filled with a **template**, not a placeholder - clear it or it publishes verbatim; and the
    release **name** should mirror the bundle (`4 (1.0.1)`), because it is what you will match
    against the About screen when someone phones in a bug.
+
+## Over-the-air updates
+
+An OTA update replaces the JavaScript on a phone that already has the app. It
+skips both stores, so a fix reaches a cleaner the same afternoon rather than
+next week. What it cannot do is change native code - a new permission, a new
+Expo module, an SDK bump. Those need a build.
+
+**Which one do I need?** If the change touches only files under `src/`, an
+update will carry it. If `app.json`, `package.json` or a config plugin changed,
+build. When unsure, build: `runtimeVersion` uses the **fingerprint** policy, so
+a bundle that does not match a binary is simply never offered to it - an OTA
+cannot brick an install, it can only fail to apply.
+
+```bash
+eas update --channel production --message "Fix the thing"
+```
+
+Each build profile listens to the channel of the same name (`eas.json`).
+
+### When it lands
+
+Never mid-use. The rule is the web's (`fieldagent/src/lib/pwa.ts`), reached by a
+different route:
+
+- The app **always launches from the bundle already on the phone**
+  (`fallbackToCacheTimeout: 0`). Nobody standing at a door waits on a network
+  check to open it.
+- A new bundle downloads in the background afterwards
+  (`checkAutomatically: ON_LOAD`).
+- It takes effect at the **next cold start**. Nothing in this app calls
+  `reloadAsync()`, and `src/lib/updates.test.ts` fails if anything ever does -
+  a reload mid-inspection would throw away a wizard's answers.
+
+So: publish an update, and people get it the next time they open the app fresh.
+Tell them to close it and reopen it if it is urgent. **Diagnostics** says which
+state a phone is in, in as many words.
+
+### The forced-update drill
+
+Worth doing once per SDK bump, on a real build - Expo Go cannot run OTA.
+
+1. Install a `preview` build on a device.
+2. Note **Diagnostics → Updates**: "Running the version that was installed".
+3. Change something visible in `src/`, commit, then
+   `eas update --channel preview --message "drill"`.
+4. Background the app and reopen it. Diagnostics should now read "An update is
+   ready - it starts next time the app is opened".
+5. Force-quit and reopen. The change is there, and Diagnostics reads "Up to
+   date".
+6. Roll it back: `eas update:rollback --channel preview` (or republish the
+   previous commit). Confirm the phone returns on the next cold start.
+
+## Crash reports
+
+Off unless the build is given a DSN. There is no fallback project, so a fork or
+a local run reports nothing.
+
+Set `EXPO_PUBLIC_SENTRY_DSN` as an EAS environment variable on the `preview` and
+`production` environments (a DSN is a write-only ingest key, not a secret).
+**Diagnostics → Crash reports** says whether the build in someone's hand has one.
+
+For readable stack traces, source maps upload at build time when
+`SENTRY_AUTH_TOKEN` is set as an EAS **secret** - that one IS a secret - along
+with `SENTRY_ORG` and `SENTRY_PROJECT`.
+
+What it deliberately does not send: screenshots, view hierarchies, request
+bodies, or any http breadcrumb. A visit URL contains the token that IS the
+credential for that inspection, and a site report is somebody's account of a
+building they work in. `src/lib/observability.test.ts` holds each of those
+refusals in place.
 
 ## What identifies a build
 

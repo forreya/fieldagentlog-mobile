@@ -17,6 +17,8 @@ import { allAttendance } from "@/db/attendance";
 import { getDatabase, LATEST_VERSION } from "@/db/database";
 import { storeUsageBytes } from "@/db/photoStore";
 import { allReports } from "@/db/reports";
+import { observabilityEnabled } from "@/lib/observability";
+import { updateLabel, useUpdateState } from "@/lib/updates";
 import { backendSummary } from "@/lib/config";
 import { BUILD_COMMIT, versionLabel } from "@/lib/version";
 import { syncEngine, type SyncState } from "@/sync/engine";
@@ -53,6 +55,7 @@ async function readSnapshot(): Promise<Snapshot> {
 }
 
 export function DiagnosticsScreen() {
+	const update = useUpdateState();
 	const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
 	const [sync, setSync] = useState<SyncState>(syncEngine.getState());
 
@@ -75,6 +78,10 @@ export function DiagnosticsScreen() {
 			<Card>
 				<Text style={styles.heading}>This build</Text>
 				<Row label="Version" value={`${versionLabel()}${BUILD_COMMIT ? "" : " (unstamped)"}`} />
+				{/* "Have you got the fix yet?" is asked down a phone line, and until
+				    now nothing on the phone could answer it. */}
+				<Row label="Updates" value={updateLabel(update)} />
+				<Row label="Crash reports" value={observabilityEnabled() ? "on" : "off (no DSN in this build)"} />
 				<Row label="Supabase" value={snapshot?.backend ?? "..."} />
 				<Row label="Database version" value={`${snapshot?.dbVersion ?? "..."} (expected ${LATEST_VERSION})`} />
 				<Row label="Journal mode" value={snapshot?.journalMode ?? "..."} />

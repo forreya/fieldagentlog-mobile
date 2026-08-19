@@ -93,7 +93,8 @@
 					"isIosBackgroundLocationEnabled": false,
 					"isAndroidBackgroundLocationEnabled": false
 				}
-			]
+			],
+			"@sentry/react-native"
 		],
 		"experiments": {
 			"typedRoutes": true,
@@ -105,6 +106,14 @@
 				"projectId": "900e462b-99b3-404c-8e4a-2023cc4ba68f"
 			}
 		},
-		"owner": "forreya"
+		"owner": "forreya",
+		"updates": {
+			"url": "https://u.expo.dev/900e462b-99b3-404c-8e4a-2023cc4ba68f",
+			"checkAutomatically": "ON_LOAD",
+			"fallbackToCacheTimeout": 0
+		},
+		"runtimeVersion": {
+			"policy": "fingerprint"
+		}
 	}
 }

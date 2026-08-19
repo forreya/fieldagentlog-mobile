@@ -8,8 +8,13 @@ import { useEffect } from "react";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { bootstrap } from "@/bootstrap";
 import { createPersister, createQueryClient, persistOptions } from "@/data/queryClient";
+import { startObservability } from "@/lib/observability";
 
 SplashScreen.preventAutoHideAsync();
+
+// Before anything else renders, so a crash in the first frame is still caught.
+// Inert unless the build was given a DSN.
+startObservability();
 
 // Made once, outside the component: a client rebuilt on re-render is a cache
 // thrown away on re-render.
