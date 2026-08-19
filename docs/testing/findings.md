@@ -56,17 +56,29 @@ NAV-006 cannot be marked as ever-passed until the first drill on a post-`03dea46
 build. Nothing sensitive is shown (Diagnostics deliberately names hosts, never keys), so this is
 cosmetic - but NAV-009 exercises them so a future change there does not crash from a cold link.
 
-### FIND-011 - Photo uploads fail client-side in the Expo Go dev runtime
+### FIND-011 - Photo uploads fail in every build: winter fetch rejects RN's file descriptor
 
-Found during FIND-004 device verification (2026-08-19): a queued report's photo upload never
-reaches the server - the multipart fetch rejects immediately on the phone ("We couldn't reach
-the server") while JSON requests on the same session succeed. The queue behaves correctly (the
-failure classifies as network, so the report stays honestly "Waiting" and retries; nothing is
-poisoned), but the report can never send while the photo is attached. Suspected cause: the Expo
-"winter" runtime's spec-compliant fetch replacing React Native's networking, which does not
-accept RN's `{uri, name, type}` FormData file descriptor. Visit photos share the pipeline and
-may be equally affected on current bundles - the basement-test verification that proved photo
-upload predates the current dependency set. Needs: reproduction on an installed build (this may
-be Expo Go-specific), then either `expo/fetch`'s File API or a descriptor-compatible transport
-at the `postJson` multipart path. Until resolved, photo-bearing REPORT-005/-007 and WIZ-024
-cannot pass end-to-end in Expo Go.
+**Confirmed 2026-08-19, installed-build reproduction included.** Every photo upload - visit and
+report, which share the one multipart path in `src/api/http.ts` - throws before any network I/O:
+`Error: Unsupported FormDataPart implementation`, which `postJson`'s catch then mislabels as
+"We couldn't reach the server." Root cause, verified in source and by probe: the `expo` package's
+import side effects (`Expo.fx` → `winter/runtime.native.ts`) replace global `fetch` with Expo's
+spec-compliant implementation in **all** builds, and its multipart converter
+(`expo/src/winter/fetch/convertFormData.ts`) accepts only strings, Blobs, or objects exposing
+`bytes()` - never React Native's classic `{uri, name, type}` descriptor. Expo's own test suite
+pins the throw ("should throw an error if the react-native FormData passing an uri").
+
+Scope proven by probe on both runtimes: Expo Go (JSON POST answered 404; both descriptor
+multiparts threw) and an installed Android **release** APK with the embedded bundle (HTTPS JSON
+POST answered 403; both descriptor multiparts threw; same `_fetch` bytecode implementation).
+Not Expo Go-specific, not a backend problem (curl multipart to the same endpoint returns 200 and
+a ref), not a URI-form problem (every queued photo is `file://` in app documents on both
+platforms). The stack has been this way since the project's first lockfile, so no shipped binary
+has ever uploaded a photo. The queue handles it correctly throughout - retryable, honest
+"Waiting", nothing poisoned, bytes kept.
+
+Fix direction (per the winter converter's accepted inputs): append the stored file as an
+expo-file-system `File`/Blob - e.g. `form.append("file", new File(uri).blob(), name)` - at the
+two append sites, keeping `postJson` single-transport. `EXPO_PUBLIC_USE_RN_FETCH` exists as an
+official escape hatch but reverts the runtime rather than adopting the supported representation.
+Until fixed, photo-bearing REPORT-005/-007 and WIZ-024 cannot pass end to end anywhere.
