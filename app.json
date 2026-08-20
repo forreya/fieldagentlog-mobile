@@ -89,7 +89,7 @@
 					"locationWhenInUsePermission": "FieldAgentLog uses your location when you check in or out of a site, when you report an issue, and when you ask it to sort blocks by distance. It is never used in the background.",
 					"locationAlwaysAndWhenInUsePermission": false,
 					"locationAlwaysPermission": false,
-					"motionUsagePermission": false,
+					"motionUsagePermission": "FieldAgentLog's location component may use motion to sharpen the accuracy of a check-in or check-out fix. The app never tracks your movement and never stores motion data.",
 					"isIosBackgroundLocationEnabled": false,
 					"isAndroidBackgroundLocationEnabled": false
 				}

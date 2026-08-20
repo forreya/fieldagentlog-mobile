@@ -38,6 +38,7 @@ Four permissions. Nothing else.
 | `NSLocationWhenInUseUsageDescription` | The three places location is used: check in/out, reporting an issue, sorting by distance. |
 | `NSCameraUsageDescription` | Photographing a fault on a check or a report. |
 | `NSPhotoLibraryUsageDescription` | Attaching an existing picture instead. |
+| `NSMotionUsageDescription` | Not a capability the app uses - a string Apple REQUIRES. expo-location's pod links CoreMotion (it can consult motion to sharpen a fix), and App Store Connect rejects any binary referencing that API without a purpose string (ITMS-90683, seen on 1.0.1 build 8). The string says plainly that motion is never tracked or stored. |
 
 Three strings. There is **no `UIBackgroundModes`** entry, which is what makes
 the "never used in the background" line in the location string true rather than
@@ -65,7 +66,9 @@ Blocked alongside three that were already handled:
 On iOS the plugins had added five purpose strings for capabilities the app does
 not have: Face ID (`expo-secure-store` offers a biometric gate; the session does
 not use it), microphone and motion, and both background-location strings. Every
-one was `$(PRODUCT_NAME)` boilerplate. Shipping a purpose string advertises a
+one was `$(PRODUCT_NAME)` boilerplate. (Motion later had to COME BACK -
+see the iOS table: Apple's upload scan requires it while expo-location links
+CoreMotion, used or not. The lesson survives for the other four.) Shipping a purpose string advertises a
 capability - a reviewer reads it as something the app does.
 
 They are switched off with `false` in the plugin options rather than deleted
