@@ -45,6 +45,35 @@ export async function storePhoto(source: LocalFile): Promise<LocalFile> {
 	return { uri: target.uri, name: source.name, type: source.type };
 }
 
+/**
+ * The container-independent form of a stored photo's uri, for queue rows.
+ *
+ * iOS renames the app container on every native update: the files migrate,
+ * but an absolute file:// path persisted before the update points into the
+ * old container forever after. The stable identity of a stored photo is its
+ * generated basename inside the one directory this module owns, so that is
+ * what goes to disk.
+ */
+export function storedKey(uri: string): string {
+	return `${PHOTO_DIR}/${basenameOf(uri)}`;
+}
+
+/**
+ * Resolve a persisted key - or a legacy absolute uri - against the CURRENT
+ * photo directory. Resolving by basename is what heals rows written before
+ * keys existed: an old-container absolute path and a relative key both name
+ * the same file here and now. Construction only - nothing is created or
+ * touched on disk.
+ */
+export function resolvePhotoUri(stored: string): string {
+	return new File(new Directory(Paths.document, PHOTO_DIR), basenameOf(stored)).uri;
+}
+
+function basenameOf(path: string): string {
+	const segments = path.split("/").filter(Boolean);
+	return segments.length ? segments[segments.length - 1] : path;
+}
+
 /** True when the bytes are still on disk. */
 export function storedPhotoExists(uri: string): boolean {
 	try {

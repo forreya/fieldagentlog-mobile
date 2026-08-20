@@ -7,14 +7,28 @@
 // nothing was saved is the one outcome this queue exists to prevent.
 
 import { getDatabase } from "./database";
+import { resolvePhotoUri, storedKey } from "./photoStore";
 import type { PendingReport } from "./types";
+
+// Photo paths go into the row as container-independent keys and come back
+// resolved against the current documents directory, same as the visit photo
+// queue - iOS moves the app container on every native update, and a report
+// can wait through one holding un-synced photos.
+function keyed(report: PendingReport): PendingReport {
+	return { ...report, photos: report.photos.map((p) => ({ ...p, file: { ...p.file, uri: storedKey(p.file.uri) } })) };
+}
+
+function resolved(record: string): PendingReport {
+	const report = JSON.parse(record) as PendingReport;
+	return { ...report, photos: report.photos.map((p) => ({ ...p, file: { ...p.file, uri: resolvePhotoUri(p.file.uri) } })) };
+}
 
 export async function saveReport(report: PendingReport): Promise<void> {
 	const db = await getDatabase();
 	await db.runAsync(
 		"INSERT OR REPLACE INTO reports (local_id, record, updated_at) VALUES (?, ?, ?)",
 		report.local_id,
-		JSON.stringify(report),
+		JSON.stringify(keyed(report)),
 		Date.now(),
 	);
 }
@@ -24,7 +38,7 @@ export async function allReports(): Promise<PendingReport[]> {
 	try {
 		const db = await getDatabase();
 		const rows = await db.getAllAsync<{ record: string }>("SELECT record FROM reports ORDER BY updated_at ASC");
-		return rows.map((r) => JSON.parse(r.record) as PendingReport);
+		return rows.map((r) => resolved(r.record));
 	} catch {
 		return [];
 	}
@@ -33,7 +47,7 @@ export async function allReports(): Promise<PendingReport[]> {
 export async function getReport(localId: string): Promise<PendingReport | undefined> {
 	const db = await getDatabase();
 	const row = await db.getFirstAsync<{ record: string }>("SELECT record FROM reports WHERE local_id = ?", localId);
-	return row ? (JSON.parse(row.record) as PendingReport) : undefined;
+	return row ? resolved(row.record) : undefined;
 }
 
 export async function deleteReport(localId: string): Promise<void> {

@@ -21,7 +21,14 @@ import { createVisitSource } from "@/sync/visitSync";
 import { bootstrap, referencedPhotoUris, resetBootstrap } from "./bootstrap";
 
 jest.mock("expo-sqlite");
-jest.mock("@/db/photoStore", () => ({ sweepOrphans: jest.fn(), deleteStoredPhoto: jest.fn() }));
+jest.mock("@/db/photoStore", () => ({
+	sweepOrphans: jest.fn(),
+	deleteStoredPhoto: jest.fn(),
+	// Identity fakes: resolution is proven in photoStore's own suite; here the
+	// point is WHICH uris reach the sweep.
+	storedKey: (uri: string) => uri,
+	resolvePhotoUri: (stored: string) => stored,
+}));
 jest.mock("@/sync/triggers", () => ({ startSyncTriggers: () => () => undefined }));
 jest.mock("@/api/visit");
 

@@ -138,8 +138,42 @@ describe("photos", () => {
 	test("round-trips, keeping the file path rather than any bytes", async () => {
 		await addPendingPhoto(photo());
 		const loaded = await getPhoto("p1");
-		expect(loaded?.file).toEqual({ uri: "file:///tmp/p1.jpg", name: "p1.jpg", type: "image/jpeg" });
+		// The path comes back resolved against the CURRENT documents directory,
+		// not echoed - iOS moves the container on native updates (FIND-012).
+		expect(loaded?.file.uri).toMatch(/^file:\/\/.*\/document\/photos\/p1\.jpg$/);
+		expect(loaded?.file.name).toBe("p1.jpg");
+		expect(loaded?.file.type).toBe("image/jpeg");
 		expect(loaded?.ref).toBeNull();
+	});
+
+	test("the row itself stores a container-independent key, not the absolute path", async () => {
+		await addPendingPhoto(
+			photo({ file: { uri: "file:///var/mobile/Containers/Data/Application/ABC/Documents/photos/p1.jpg", name: "p1.jpg", type: "image/jpeg" } }),
+		);
+		const db = await getDatabase();
+		const row = await db.getFirstAsync<{ file_uri: string }>("SELECT file_uri FROM photos WHERE local_id = ?", "p1");
+		expect(row?.file_uri).toBe("photos/p1.jpg");
+	});
+
+	test("a legacy row holding an old-container absolute path resolves to the current directory", async () => {
+		// Written by a build that persisted absolute uris, read after a native
+		// update moved the container. The basename is the stable identity.
+		const db = await getDatabase();
+		await db.runAsync(
+			`INSERT INTO photos (local_id, token, check_id, file_uri, file_name, content_type, ref, created_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			"old1",
+			"tok1",
+			"c1",
+			"file:///var/mobile/Containers/Data/Application/OLD-UUID/Documents/photos/old1.jpg",
+			"old1.jpg",
+			"image/jpeg",
+			null,
+			1_000,
+		);
+		const loaded = await getPhoto("old1");
+		expect(loaded?.file.uri).toMatch(/^file:\/\/.*\/document\/photos\/old1\.jpg$/);
+		expect(loaded?.file.uri).not.toContain("OLD-UUID");
 	});
 
 	test("pending means 'no server ref yet', and an uploaded photo drops out", async () => {
@@ -214,6 +248,30 @@ describe("reports", () => {
 		expect(loaded?.note).toBe("Door closer has gone");
 		expect(loaded?.photos).toHaveLength(1);
 		expect(loaded?.photos[0].ref).toBeNull();
+	});
+
+	test("photo paths persist as container-independent keys and resolve on read", async () => {
+		await saveReport(
+			report({
+				photos: [
+					{
+						local_id: "rp1",
+						file: { uri: "file:///var/mobile/Containers/Data/Application/OLD-UUID/Documents/photos/rp1.jpg", name: "rp1.jpg", type: "image/jpeg" },
+						ref: null,
+					},
+				],
+			}),
+		);
+
+		// The stored JSON must not carry the container path...
+		const db = await getDatabase();
+		const row = await db.getFirstAsync<{ record: string }>("SELECT record FROM reports WHERE local_id = ?", "r1");
+		expect(row?.record).toContain("photos/rp1.jpg");
+		expect(row?.record).not.toContain("OLD-UUID");
+
+		// ...and reads resolve against the CURRENT documents directory.
+		const loaded = await getReport("r1");
+		expect(loaded?.photos[0].file.uri).toMatch(/^file:\/\/.*\/document\/photos\/rp1\.jpg$/);
 	});
 
 	test("saving again keeps one row, so refs recorded mid-upload are not duplicated", async () => {

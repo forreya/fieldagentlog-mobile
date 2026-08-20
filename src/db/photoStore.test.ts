@@ -1,6 +1,6 @@
 import * as FS from "expo-file-system";
 
-import { deleteStoredPhoto, storePhoto, storedPhotoExists, storeUsageBytes, sweepOrphans } from "./photoStore";
+import { deleteStoredPhoto, resolvePhotoUri, storedKey, storePhoto, storedPhotoExists, storeUsageBytes, sweepOrphans } from "./photoStore";
 
 jest.mock("expo-file-system");
 jest.mock("expo-crypto", () => {
@@ -114,6 +114,40 @@ describe("sweepOrphans", () => {
 
 	test("sweeping an empty store is a no-op, not an error", () => {
 		expect(sweepOrphans(["file:///anything.jpg"])).toBe(0);
+	});
+});
+
+describe("storedKey / resolvePhotoUri", () => {
+	test("round-trips a freshly stored photo", async () => {
+		const stored = await storePhoto(captured());
+		expect(resolvePhotoUri(storedKey(stored.uri))).toBe(stored.uri);
+	});
+
+	test("the key carries no container path, only the owned directory and name", async () => {
+		const stored = await storePhoto(captured());
+		expect(storedKey(stored.uri)).toMatch(/^photos\/uuid-\d+\.jpg$/);
+	});
+
+	test("a legacy absolute uri from an old iOS container resolves into the current directory", async () => {
+		// The row was written before keys existed, then a native update moved
+		// the container. The file migrated; the path did not.
+		const stored = await storePhoto(captured());
+		const name = storedKey(stored.uri).split("/").pop();
+		const legacy = `file:///var/mobile/Containers/Data/Application/OLD-UUID/Documents/photos/${name}`;
+
+		expect(resolvePhotoUri(legacy)).toBe(stored.uri);
+		expect(storedPhotoExists(resolvePhotoUri(legacy))).toBe(true);
+	});
+
+	test("the sweep keeps a photo whose row still holds a legacy absolute path", async () => {
+		// This is the FIND-012 disaster case: before resolution, the keep-set
+		// named old-container uris, matched nothing, and the sweep deleted
+		// every queued photo on first launch after an update.
+		const stored = await storePhoto(captured());
+		const legacy = `file:///var/mobile/Containers/Data/Application/OLD-UUID/Documents/${storedKey(stored.uri)}`;
+
+		expect(sweepOrphans([resolvePhotoUri(legacy)])).toBe(0);
+		expect(storedPhotoExists(stored.uri)).toBe(true);
 	});
 });
 

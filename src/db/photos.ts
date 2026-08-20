@@ -2,6 +2,7 @@
 // bytes: the file store (phase B4) owns the file's life, this owns the queue.
 
 import { getDatabase } from "./database";
+import { resolvePhotoUri, storedKey } from "./photoStore";
 import type { PendingPhoto } from "./types";
 
 interface PhotoRow {
@@ -15,12 +16,17 @@ interface PhotoRow {
 	created_at: number;
 }
 
+// Paths go to disk as container-independent keys and come back resolved
+// against the current documents directory (photoStore owns both halves).
+// iOS moves the container on every native update, so an absolute path
+// persisted before one is dead after it - and the row outlives the update
+// precisely when it matters, holding un-synced work.
 function toPhoto(row: PhotoRow): PendingPhoto {
 	return {
 		local_id: row.local_id,
 		token: row.token,
 		check_id: row.check_id,
-		file: { uri: row.file_uri, name: row.file_name, type: row.content_type },
+		file: { uri: resolvePhotoUri(row.file_uri), name: row.file_name, type: row.content_type },
 		ref: row.ref,
 		created_at: row.created_at,
 	};
@@ -34,7 +40,7 @@ export async function addPendingPhoto(photo: PendingPhoto): Promise<void> {
 		photo.local_id,
 		photo.token,
 		photo.check_id,
-		photo.file.uri,
+		storedKey(photo.file.uri),
 		photo.file.name,
 		photo.file.type,
 		photo.ref,

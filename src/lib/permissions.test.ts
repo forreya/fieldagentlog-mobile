@@ -52,6 +52,10 @@ describe("iOS purpose strings", () => {
 		["expo-image-picker", "photosPermission"],
 		["expo-image-picker", "cameraPermission"],
 		["expo-location", "locationWhenInUsePermission"],
+		// Motion is not switched off despite the app never using it: expo-location
+		// links CoreMotion, and Apple rejects the binary without a purpose string
+		// (ITMS-90683, build 8). The string has to exist, so it tells the truth.
+		["expo-location", "motionUsagePermission"],
 	])("%s.%s is written for the person reading it", (plugin, key) => {
 		const value = optionsFor(plugin)[key];
 
@@ -67,7 +71,6 @@ describe("iOS purpose strings", () => {
 		["expo-image-picker", "microphonePermission"],
 		["expo-location", "locationAlwaysPermission"],
 		["expo-location", "locationAlwaysAndWhenInUsePermission"],
-		["expo-location", "motionUsagePermission"],
 	])("%s.%s is switched off, not left to a default", (plugin, key) => {
 		expect(optionsFor(plugin)[key]).toBe(false);
 	});

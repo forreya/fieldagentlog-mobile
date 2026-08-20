@@ -16,7 +16,13 @@ import { createVisitSource, pushVisit, readyToSubmit, visitHasWork } from "./vis
 
 jest.mock("expo-sqlite");
 jest.mock("@/api/visit");
-jest.mock("@/db/photoStore", () => ({ deleteStoredPhoto: jest.fn() }));
+jest.mock("@/db/photoStore", () => ({
+	deleteStoredPhoto: jest.fn(),
+	// Identity fakes: path resolution is photoStore's own concern, proven in
+	// its own suite. This one is about upload ordering.
+	storedKey: (uri: string) => uri,
+	resolvePhotoUri: (stored: string) => stored,
+}));
 
 const { __resetAllDatabases } = SQLite as unknown as { __resetAllDatabases: () => void };
 const api = visitApi as jest.Mocked<typeof visitApi>;

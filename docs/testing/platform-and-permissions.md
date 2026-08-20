@@ -77,6 +77,17 @@ signal": every smoke run saw a photo captured and queued and called it done. Ver
 object and the report/visit row server-side, and check both paths (report photos, visit check
 photos - they share one primitive, so one test per platform covers both).
 
+### PLAT-010 - Queued photos survive an iOS native update
+
+iOS renames the app container on every native (store/TestFlight) update; files migrate, absolute
+paths die. Queue rows therefore persist a container-independent key (`photos/<name>`) and resolve
+it against the current documents directory on read - `storedKey`/`resolvePhotoUri` in
+`src/db/photoStore.ts`. Rows written by builds that stored absolute paths heal on read by
+basename. Unit-covered (round-trip, legacy-row resolution, sweep keep-set); on-device proof means
+installing a new build OVER one holding un-synced photo work and watching it upload, not restart.
+If a new store ever persists a file path, it must go through the same pair - an absolute
+`file://` uri in any row is a regression.
+
 ### PLAT-008 - Installed-build parity
 
 Before any release: the full smoke checklist ([docs/smoke-checklist.md](../smoke-checklist.md))
