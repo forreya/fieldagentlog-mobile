@@ -61,11 +61,10 @@ published (`docs/releasing.md`, forced-update drill). **Build: installed.**
 
 ### NAV-007 - Crash reporting is inert and private
 
-**Expected:** With no DSN in the build: nothing initialises, no network traffic to Sentry,
-Diagnostics says so. With a DSN (preview/production): a forced test crash arrives in Sentry
-carrying release/build info but **no** screenshots, view hierarchy, request bodies/URLs or user
-identity - a visit URL contains the token that IS the credential, so http breadcrumbs must be
-absent from any event inspected.
+**Expected:** Nothing initialises, no network traffic to Sentry, Diagnostics says "none". No
+build carries a DSN and none ever will - Sentry is decided against (2026-08-20) and removed in
+the build 10 cleanup, at which point this scenario retires. Until then it guards the inert
+state: any Sentry traffic from any build is a regression.
 
 ### NAV-008 - Back behaviour
 

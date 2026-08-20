@@ -40,11 +40,15 @@ eas login
 eas init            # writes the EAS project id into app.json
 ```
 
-Set the publishable key once so builds can read it (safe to store: it is the anon key):
+Set the publishable key and the Supabase URL once, on both environments (safe to store: the
+key is the anon key, the URL is public). Builds read the URL from `eas.json`, but `eas update`
+bundles read it from here - an environment missing it publishes an unconfigured bundle:
 
 ```bash
 eas env:create --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value <key> --environment production
 eas env:create --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value <key> --environment preview
+eas env:create --name EXPO_PUBLIC_SUPABASE_URL --value <url> --environment production
+eas env:create --name EXPO_PUBLIC_SUPABASE_URL --value <url> --environment preview
 ```
 
 Then let EAS generate signing credentials (never hand-manage them):
@@ -155,10 +159,17 @@ a bundle that does not match a binary is simply never offered to it - an OTA
 cannot brick an install, it can only fail to apply.
 
 ```bash
-eas update --channel production --message "Fix the thing"
+eas update --channel production --environment production -p android --message "Fix the thing"
+eas update --channel production --environment production -p ios --message "Fix the thing"
 ```
 
-Each build profile listens to the channel of the same name (`eas.json`).
+Each build profile listens to the channel of the same name (`eas.json`). Two
+flags are load-bearing. `--environment` makes the bundle read the EAS-hosted
+env vars and ignore local `.env` files - without it, a publish from a machine
+whose `.env` points at the local harness would inline that address into the
+production bundle. Per-platform `-p` is a workaround: `--platform all` tries to
+export the vestigial web target and fails on expo-sqlite (goes away with the
+web block, `docs/build-10-cleanup.md`).
 
 ### When it lands
 
@@ -185,7 +196,8 @@ Worth doing once per SDK bump, on a real build - Expo Go cannot run OTA.
 1. Install a `preview` build on a device.
 2. Note **Diagnostics → Updates**: "Running the version that was installed".
 3. Change something visible in `src/`, commit, then
-   `eas update --channel preview --message "drill"`.
+   `eas update --channel preview --environment preview -p android --message "drill"`
+   (and `-p ios` if drilling an iOS device).
 4. Background the app and reopen it. Diagnostics should now read "An update is
    ready - it starts next time the app is opened".
 5. Force-quit and reopen. The change is there, and Diagnostics reads "Up to
@@ -195,30 +207,13 @@ Worth doing once per SDK bump, on a real build - Expo Go cannot run OTA.
 
 ## Crash reports
 
-`SENTRY_DISABLE_AUTO_UPLOAD=true` sits in the preview and production build
-profiles because the Sentry project does not exist yet: without an org,
-project and auth token the gradle/xcode upload step fails the whole build,
-and with no DSN there are no crash reports for source maps to serve anyway.
-When the Sentry project is created, set `SENTRY_ORG`, `SENTRY_PROJECT` and
-`SENTRY_AUTH_TOKEN` as EAS secrets alongside `EXPO_PUBLIC_SENTRY_DSN`, and
-remove the disable flag in the same change.
-
-Off unless the build is given a DSN. There is no fallback project, so a fork or
-a local run reports nothing.
-
-Set `EXPO_PUBLIC_SENTRY_DSN` as an EAS environment variable on the `preview` and
-`production` environments (a DSN is a write-only ingest key, not a secret).
-**Diagnostics → Crash reports** says whether the build in someone's hand has one.
-
-For readable stack traces, source maps upload at build time when
-`SENTRY_AUTH_TOKEN` is set as an EAS **secret** - that one IS a secret - along
-with `SENTRY_ORG` and `SENTRY_PROJECT`.
-
-What it deliberately does not send: screenshots, view hierarchies, request
-bodies, or any http breadcrumb. A visit URL contains the token that IS the
-credential for that inspection, and a site report is somebody's account of a
-building they work in. `src/lib/observability.test.ts` holds each of those
-refusals in place.
+There are none, by decision (2026-08-20): no Sentry project will ever be
+created. The integration shipped dormant in H3 - off without a DSN, and no DSN
+exists anywhere - and is removed wholesale in the build 10 cleanup
+(`docs/build-10-cleanup.md`). Until that lands, `SENTRY_DISABLE_AUTO_UPLOAD=true`
+stays in the preview and production build profiles: it stops the gradle/xcode
+source-map upload step failing the build over credentials that will never be
+set. **Diagnostics → Crash reports** correctly reads "none" on every build.
 
 ## What identifies a build
 
