@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import type { AttendanceSession } from "@/db/types";
+import { TAP } from "@/theme/tokens";
 
 import { OnSiteCard, formatDuration } from "./OnSiteCard";
 
@@ -68,6 +69,16 @@ describe("a check-in that was refused", () => {
 		expect(screen.getByText(/It stays saved on this phone/)).toBeTruthy();
 		// The old reassurance would be a lie here: nothing sends this by itself.
 		expect(screen.queryByText(/It goes up when you have signal/)).toBeNull();
+	});
+
+	test("every action on the card meets the glove-friendly tap target", async () => {
+		// Try again is a recovery action tapped on a doorstep - it must not be
+		// the one button in the flow below the 56pt minimum.
+		await render(<OnSiteCard session={failed()} busy={false} onCheckOut={jest.fn()} onRetrySync={jest.fn()} />);
+
+		const buttons = screen.getAllByRole("button");
+		expect(buttons).toHaveLength(2); // Try again, Check out
+		for (const button of buttons) expect(button).toHaveStyle({ minHeight: TAP });
 	});
 
 	test("offers Try again, and checking out still works", async () => {

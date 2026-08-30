@@ -6,6 +6,7 @@ import { Alert } from "react-native";
 import type { SentReport } from "@/api/report";
 import type { ReportsView } from "@/data/useReports";
 import type { PendingReport } from "@/db/types";
+import { TAP } from "@/theme/tokens";
 
 import { SentReports } from "./SentReports";
 
@@ -140,6 +141,15 @@ describe("a failed report's two ways out", () => {
 
 		fireEvent.press(screen.getByText("Try again"));
 		expect(retry).toHaveBeenCalledWith("rep-1");
+	});
+
+	test("both ways out meet the glove-friendly tap target", async () => {
+		// These are the recovery actions for a report that did not send, tapped
+		// in the field - not dev-screen buttons, so no sm size here.
+		await show({ pending: [failed()] });
+
+		expect(screen.getByRole("button", { name: "Try again" })).toHaveStyle({ minHeight: TAP });
+		expect(screen.getByRole("button", { name: "Discard" })).toHaveStyle({ minHeight: TAP });
 	});
 
 	test("Discard asks first, saying exactly what is lost", async () => {

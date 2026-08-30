@@ -24,7 +24,7 @@ export default function VisitRoute() {
 		case "loading":
 			return <LoadingScreen />;
 		case "dead_end":
-			return <DeadEndScreen reason={state.reason} />;
+			return <DeadEndScreen reason={state.reason} token={token} />;
 		case "offline_no_cache":
 			return <ConnectionErrorScreen mode="offline" onRetry={retry} token={token} />;
 		case "error":

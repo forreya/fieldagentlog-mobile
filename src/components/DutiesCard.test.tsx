@@ -24,7 +24,7 @@ test("lists what is due, with its cadence, and offers to start", async () => {
 	const onStart = jest.fn();
 	await render(
 		<DutiesCard
-			duties={[duty(), duty({ id: "d2", title: "Communal fire doors", freq_label: "Quarterly", status: "soon" })]}
+			duties={[duty(), duty({ id: "d2", title: "Communal fire doors", freq_label: "Quarterly", status: "due" })]}
 			busy={false}
 			onStart={onStart}
 		/>,

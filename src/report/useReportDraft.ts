@@ -34,6 +34,55 @@ export interface ReportDraftView {
 	dismissError: () => void;
 }
 
+interface SendDeps {
+	attendanceClientId: string | null;
+	busy: boolean;
+	draft: Draft;
+	ownerUserId: string | null;
+	site: { id: string; name: string } | null;
+	setBusy: (value: boolean) => void;
+	setError: (value: string | null) => void;
+	setTried: (value: boolean) => void;
+}
+
+/** Sending. Lifted out of the hook for the size budget, like useEndVisit. */
+function useSend({ attendanceClientId, busy, draft, ownerUserId, site, setBusy, setError, setTried }: SendDeps): () => Promise<boolean> {
+	return useCallback(async () => {
+		if (busy) return false;
+		setTried(true);
+		if (!site) {
+			setError("Choose which site this is about.");
+			return false;
+		}
+		const problem = draftProblem(draft);
+		if (problem) {
+			setError(problem);
+			return false;
+		}
+
+		setBusy(true);
+		setError(null);
+		try {
+			// The fix is best-effort and deliberately awaited: eight seconds at
+			// worst, and a report with a position is worth more to whoever picks
+			// it up. It never blocks the report itself - null is a fine answer.
+			const point = await captureReportFix();
+			await saveReport(toPendingReport(draft, site, point, attendanceClientId, ownerUserId));
+			void syncEngine.sync("report");
+			return true;
+		} catch {
+			// saveReport throws on a storage failure, on purpose (see db/reports).
+			// Swallowing it here would stop the spinner and say nothing - the one
+			// outcome that flow exists to prevent. The draft is still on screen,
+			// so trying again costs a tap.
+			setError("Couldn't save the report on this phone. Try again.");
+			return false;
+		} finally {
+			setBusy(false);
+		}
+	}, [attendanceClientId, busy, draft, site, ownerUserId, setBusy, setError, setTried]);
+}
+
 /**
  * `site` is null while a cleaner has not picked one yet. A report with no site
  * is not a report - the broker has nowhere to file it - so this is a validation
@@ -66,33 +115,7 @@ export function useReportDraft(site: { id: string; name: string } | null, attend
 		[draft],
 	);
 
-	const send = useCallback(async () => {
-		if (busy) return false;
-		setTried(true);
-		if (!site) {
-			setError("Choose which site this is about.");
-			return false;
-		}
-		const problem = draftProblem(draft);
-		if (problem) {
-			setError(problem);
-			return false;
-		}
-
-		setBusy(true);
-		setError(null);
-		try {
-			// The fix is best-effort and deliberately awaited: eight seconds at
-			// worst, and a report with a position is worth more to whoever picks
-			// it up. It never blocks the report itself - null is a fine answer.
-			const point = await captureReportFix();
-			await saveReport(toPendingReport(draft, site, point, attendanceClientId, ownerUserId));
-			void syncEngine.sync("report");
-			return true;
-		} finally {
-			setBusy(false);
-		}
-	}, [attendanceClientId, busy, draft, site, ownerUserId]);
+	const send = useSend({ attendanceClientId, busy, draft, ownerUserId, site, setBusy, setError, setTried });
 
 	return {
 		draft,

@@ -1,6 +1,7 @@
 // The cleaner's site list, in each state it can be in.
 
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { Alert } from "react-native";
 
 import type { CleanerSite } from "@/api/cleaner";
 import type { SitesView } from "@/data/useSites";
@@ -20,7 +21,8 @@ jest.mock("@/data/useSites", () => ({ useSites: () => mockSites.current }));
 // the list. Each has its own tests.
 const mockAttendance = { current: {} as Record<string, unknown> };
 jest.mock("@/cleaner/useAttendance", () => ({ useAttendance: () => mockAttendance.current }));
-jest.mock("@/data/useDuties", () => ({ useDuties: () => ({ duties: [], loading: false, refresh: jest.fn() }) }));
+const mockDuties = { current: { duties: [] as unknown[], loading: false, refresh: jest.fn() } };
+jest.mock("@/data/useDuties", () => ({ useDuties: () => mockDuties.current }));
 jest.mock("@/cleaner/useChecksSubmitted", () => ({ useChecksSubmitted: () => ({ hit: false, dismiss: jest.fn() }) }));
 const mockFailedShifts = { current: { failed: [], retry: jest.fn() } as { failed: unknown[]; retry: jest.Mock } };
 jest.mock("@/cleaner/useFailedShifts", () => ({ useFailedShifts: () => mockFailedShiftsRef().current }));
@@ -48,8 +50,9 @@ const onSiteAt = (siteName: string) => ({
 	synced_out: false,
 });
 
-async function show(view: Partial<SitesView>, attendance: Record<string, unknown> = {}, failedShifts: unknown[] = []) {
+async function show(view: Partial<SitesView>, attendance: Record<string, unknown> = {}, failedShifts: unknown[] = [], duties: unknown[] = []) {
 	mockFailedShifts.current = { failed: failedShifts, retry: jest.fn() };
+	mockDuties.current = { duties, loading: false, refresh: jest.fn() };
 	mockAttendance.current = {
 		active: null,
 		justClosed: null,
@@ -154,6 +157,49 @@ describe("when the sites list fails but the cleaner is on site", () => {
 
 		expect(screen.getByText("Elm Court")).toBeTruthy();
 		expect(screen.getByText("Loading your sites")).toBeTruthy();
+	});
+});
+
+describe("checking out with fire checks still due", () => {
+	// Same guard as the web app: skipping due checks should be a choice, not an
+	// accident of a one-tap check-out.
+	const duty = (id: string) => ({ id, title: "Fire doors", freq_label: "Weekly", status: "due", status_label: "due today" });
+
+	test("asks first, and the tap alone checks nobody out", async () => {
+		const alert = jest.spyOn(Alert, "alert");
+		const checkOut = jest.fn();
+		await show({ sites: [site({})] }, { active: onSiteAt("Elm Court"), checkOut }, [], [duty("d1"), duty("d2")]);
+
+		fireEvent.press(screen.getByRole("button", { name: "Check out" }));
+
+		expect(checkOut).not.toHaveBeenCalled();
+		expect(alert).toHaveBeenCalledWith("Check out anyway?", "2 fire-safety checks are still due here.", expect.anything());
+
+		const buttons = alert.mock.calls[0][2] as { text: string; onPress?: () => void }[];
+		buttons.find((b) => b.text === "Check out")?.onPress?.();
+		expect(checkOut).toHaveBeenCalledTimes(1);
+		alert.mockRestore();
+	});
+
+	test("one due check reads as is, not are", async () => {
+		const alert = jest.spyOn(Alert, "alert");
+		await show({ sites: [site({})] }, { active: onSiteAt("Elm Court") }, [], [duty("d1")]);
+
+		fireEvent.press(screen.getByRole("button", { name: "Check out" }));
+		expect(alert).toHaveBeenCalledWith("Check out anyway?", "1 fire-safety check is still due here.", expect.anything());
+		alert.mockRestore();
+	});
+
+	test("nothing due checks straight out - leaving must never grow a step", async () => {
+		const alert = jest.spyOn(Alert, "alert");
+		const checkOut = jest.fn();
+		await show({ sites: [site({})] }, { active: onSiteAt("Elm Court"), checkOut });
+
+		fireEvent.press(screen.getByRole("button", { name: "Check out" }));
+
+		expect(alert).not.toHaveBeenCalled();
+		expect(checkOut).toHaveBeenCalledTimes(1);
+		alert.mockRestore();
 	});
 });
 

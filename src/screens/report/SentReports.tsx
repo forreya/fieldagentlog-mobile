@@ -117,9 +117,12 @@ function PendingRow({ report, onRetry, onDiscard }: { report: PendingReport; onR
 						: "Saved on this phone. It goes up when you have signal."}
 			</Text>
 			{failed ? (
+				// Full-height targets, not sm: these are the recovery actions for a
+				// report that did not send, tapped in the field. sm's 38pt is below
+				// the glove minimum and stays reserved for dev screens.
 				<View style={styles.actions}>
-					<Button label="Try again" variant="ghost" size="sm" onPress={() => onRetry(report.local_id)} />
-					<Button label="Discard" variant="ghost" size="sm" onPress={() => confirmDiscard(report, onDiscard)} />
+					<Button label="Try again" variant="ghost" onPress={() => onRetry(report.local_id)} />
+					<Button label="Discard" variant="ghost" onPress={() => confirmDiscard(report, onDiscard)} />
 				</View>
 			) : null}
 		</View>

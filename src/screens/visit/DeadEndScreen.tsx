@@ -2,6 +2,7 @@ import { router } from "expo-router";
 
 import type { DeadEndReason } from "@/api/errors";
 import { useAuth } from "@/auth/AuthProvider";
+import { useHandoff } from "@/cleaner/useHandoff";
 import { Button } from "@/components/Button";
 import { StatusScreen } from "@/components/StatusScreen";
 
@@ -36,8 +37,9 @@ const COPY: Record<DeadEndReason, { title: string; body: string }> = {
 	},
 };
 
-export function DeadEndScreen({ reason }: { reason: DeadEndReason }) {
+export function DeadEndScreen({ reason, token }: { reason: DeadEndReason; token?: string }) {
 	const { state } = useAuth();
+	const handoff = useHandoff(token ?? "");
 	const { title, body } = COPY[reason] ?? COPY.unknown;
 
 	// Still no retry, for the reason above. But the "nowhere else to be"
@@ -46,9 +48,16 @@ export function DeadEndScreen({ reason }: { reason: DeadEndReason }) {
 	// a screen with no navigation is a different failure from a spent link.
 	const signedIn = state.status === "signed_in" || state.status === "role_unknown";
 
+	// A cleaner who hit a dead link mid-visit is not going to "their blocks" -
+	// their attendance timer is still running behind this screen, and the way
+	// back is the visit they left. Same split as the web DeadEndScreen.
 	return (
 		<StatusScreen tone="bad" title={title} body={body}>
-			{signedIn ? <Button label="Back to your blocks" block onPress={() => router.replace("/(app)")} /> : null}
+			{handoff.fromCleaner ? (
+				<Button label="Back to your site visit" block onPress={() => handoff.goBack(false)} />
+			) : signedIn ? (
+				<Button label="Back to your blocks" block onPress={() => router.replace("/(app)")} />
+			) : null}
 		</StatusScreen>
 	);
 }

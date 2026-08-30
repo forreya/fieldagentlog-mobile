@@ -46,7 +46,12 @@ export function SuccessScreen({ blockName, submitted, token }: { blockName?: str
 	return (
 		<StatusScreen
 			title="Inspection submitted"
-			body={`${blockName ? `${blockName} is done.` : "All done."} The record has been sent and signed. There's nothing else you need to do.`}
+			// The closing sentence swaps for a handoff cleaner, as on the web:
+			// telling someone with a timer still running that there is nothing
+			// left to do invites them to drive off checked in.
+			body={`${blockName ? `${blockName} is done.` : "All done."} The record has been sent and signed. ${
+				handoff.fromCleaner ? "You're still checked in to this site - go back and check out when you leave." : "There's nothing else you need to do."
+			}`}
 		>
 			{submitted.logbook_pdf_url ? (
 				<Button label="Open the logbook (PDF)" size="lg" block onPress={() => void openLogbook()} />

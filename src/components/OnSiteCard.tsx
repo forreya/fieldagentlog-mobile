@@ -66,7 +66,9 @@ export function OnSiteCard({ session, busy, onCheckOut, onRetrySync }: OnSiteCar
 				<>
 					<Text style={styles.failed}>{`This visit couldn't be recorded - ${session.sync_error.message}`}</Text>
 					<Text style={styles.pending}>It stays saved on this phone. Checking out still works.</Text>
-					{onRetrySync ? <Button label="Try again" variant="ghost" size="sm" onPress={onRetrySync} /> : null}
+					{/* Full-height target, not sm: this is a recovery action tapped on a
+					    doorstep, probably with gloves on. sm's 38pt is for dev screens. */}
+					{onRetrySync ? <Button label="Try again" variant="ghost" onPress={onRetrySync} /> : null}
 				</>
 			) : session.synced_in ? null : (
 				<Text style={styles.pending}>Saved on this phone. It goes up when you have signal.</Text>

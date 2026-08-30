@@ -43,6 +43,10 @@ beforeEach(() => {
 	jest.clearAllMocks();
 	api.checkIn.mockResolvedValue("server-1");
 	api.checkOut.mockResolvedValue(3600);
+	// The push path re-reads the current row before persisting progress, so the
+	// merge cannot clobber a concurrent UI write. An empty read falls back to
+	// the pass's own snapshot - the behaviour every test below assumes.
+	db.allAttendance.mockResolvedValue([]);
 });
 
 describe("what still owes the server something", () => {
@@ -246,6 +250,63 @@ test("a shift queued while signed out is kept sendable", async () => {
 	await expect(pushAttendance(session({ synced_in: true, check_out: OUT }))).rejects.toThrow();
 
 	expect(saved().every((s) => !s.sync_error)).toBe(true);
+});
+
+describe("a check-out written while the pass is in flight", () => {
+	// The race: the engine snapshots the session, sends the check-in, and only
+	// then persists. If the cleaner checks out during that round-trip, a
+	// whole-row save of the snapshot erases the check-out - and with synced_in
+	// now true and check_out null, attendanceHasWork never offers it again.
+	// The shift would end on the server only when the app happened to replay it,
+	// which is never.
+
+	/** A real store under the mocks, so the interleaving actually interleaves. */
+	function backingStore(initial: AttendanceSession): Map<string, AttendanceSession> {
+		const store = new Map<string, AttendanceSession>([[initial.local_id, initial]]);
+		db.saveAttendance.mockImplementation(async (s) => void store.set(s.local_id, s));
+		db.allAttendance.mockImplementation(async () => [...store.values()]);
+		db.deleteAttendance.mockImplementation(async (id) => void store.delete(id));
+		return store;
+	}
+
+	test("survives the check-in round-trip and goes up in the same pass", async () => {
+		const fresh = session();
+		const store = backingStore(fresh);
+
+		// Hold the check-in open so the UI can write underneath it.
+		let land!: (id: string) => void;
+		api.checkIn.mockImplementation(() => new Promise((resolve) => (land = resolve)));
+		const pass = pushAttendance(fresh);
+
+		// Exactly what useEndVisit does: spread ITS copy, add the check-out, save.
+		await db.saveAttendance({ ...fresh, check_out: OUT });
+		land("server-1");
+		await pass;
+
+		// The merge kept the check-out alongside the pass's own progress...
+		expect(saved().at(-1)).toMatchObject({ check_out: OUT, synced_in: true, synced_out: true });
+		// ...and the same pass sent it and retired the row.
+		expect(api.checkOut).toHaveBeenCalledWith("abc-123", OUT);
+		expect(db.deleteAttendance).toHaveBeenCalledWith("abc-123");
+		expect(store.has("abc-123")).toBe(false);
+	});
+
+	test("a permanent check-in failure recorded mid-race keeps the check-out too", async () => {
+		const fresh = session();
+		backingStore(fresh);
+
+		let refuse!: (err: Error) => void;
+		api.checkIn.mockImplementation(() => new Promise((_resolve, reject) => (refuse = reject)));
+		const pass = pushAttendance(fresh);
+
+		await db.saveAttendance({ ...fresh, check_out: OUT });
+		refuse(new ApiError("invalid", "Your account is not active."));
+		await expect(pass).rejects.toThrow();
+
+		// The failure went on the CURRENT row, not the pass's stale snapshot:
+		// the check-out is still there for Try again to send.
+		expect(saved().at(-1)).toMatchObject({ check_out: OUT, sync_error: { message: "Your account is not active." } });
+	});
 });
 
 describe("manual recovery - and the absence of anything else", () => {

@@ -11,12 +11,16 @@ jest.mock("@/auth/AuthProvider", () => ({
 	useAuth: () => ({ state: mockSignedIn.current ? { status: "signed_in", user: { id: "u1" }, role: "agent" } : { status: "signed_out" } }),
 }));
 
+const mockHandoff = { current: { fromCleaner: false, goBack: jest.fn() } };
+jest.mock("@/cleaner/useHandoff", () => ({ useHandoff: () => mockHandoff.current }));
+
 const submitted = { visit_id: "v1", logbook_pdf_url: "https://example.test/logbook.pdf", completed_at: "2026-08-14T10:00:00Z" };
 
 beforeEach(() => {
 	jest.restoreAllMocks();
 	jest.clearAllMocks();
 	mockSignedIn.current = false;
+	mockHandoff.current = { fromCleaner: false, goBack: jest.fn() };
 });
 
 test("names the block and says the visit is locked", async () => {
@@ -71,5 +75,27 @@ describe("who gets a way out", () => {
 		// Replace: a finished visit should not sit under the list waiting to be
 		// swiped back into.
 		expect(router.replace).toHaveBeenCalledWith("/(app)");
+	});
+});
+
+describe("a cleaner handed off mid-visit", () => {
+	beforeEach(() => {
+		mockHandoff.current = { fromCleaner: true, goBack: jest.fn() };
+	});
+
+	test("is reminded to check out, not told there is nothing left to do", async () => {
+		// "There's nothing else you need to do" with a timer still running invites
+		// them to drive off checked in. Same sentence swap as the web app.
+		await render(<SuccessScreen blockName="Elm Court" submitted={submitted} token="tok-1" />);
+
+		expect(screen.getByText(/You're still checked in to this site - go back and check out when you leave/)).toBeTruthy();
+		expect(screen.queryByText(/nothing else you need to do/)).toBeNull();
+	});
+
+	test("their way back is the site visit, marked as submitted", async () => {
+		await render(<SuccessScreen blockName="Elm Court" submitted={submitted} token="tok-1" />);
+
+		fireEvent.press(screen.getByRole("button", { name: "Back to your site visit" }));
+		expect(mockHandoff.current.goBack).toHaveBeenCalledWith(true);
 	});
 });

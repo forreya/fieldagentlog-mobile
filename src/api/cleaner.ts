@@ -76,7 +76,9 @@ export async function checkOut(clientId: string, point: { at: number; lat: numbe
 // already "what you should do while you are here" rather than the block's whole
 // schedule.
 
-export type DutyStatus = "overdue" | "soon";
+// What the broker's dueStatus actually sends ("ok" is filtered out before the
+// wire). Not the dashboard's DueLevel - that one has "soon", this one "due".
+export type DutyStatus = "overdue" | "due";
 
 export interface CleanerDuty {
 	id: string;

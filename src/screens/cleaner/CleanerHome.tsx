@@ -1,4 +1,4 @@
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { CleanerSite } from "@/api/cleaner";
 import { useAuth } from "@/auth/AuthProvider";
@@ -211,6 +211,18 @@ function FailedShifts({ shifts }: { shifts: FailedShiftsView }) {
 	);
 }
 
+/** Skipping due fire checks should be a choice, not an accident. Same guard
+ *  and wording as the web app's CleanerHome, reshaped for Alert's title slot.
+ *  A count of zero - including duties that simply have not loaded - checks
+ *  straight out: leaving must never wait on a fetch. */
+function confirmCheckOut(due: number, checkOut: () => void): void {
+	if (due === 0) return checkOut();
+	Alert.alert("Check out anyway?", `${due} fire-safety check${due === 1 ? " is" : "s are"} still due here.`, [
+		{ text: "Cancel", style: "cancel" },
+		{ text: "Check out", onPress: checkOut },
+	]);
+}
+
 /** Everything that only exists while somebody is standing in a building. */
 function OnSite({ attendance, duties, retrySync }: { attendance: AttendanceView; duties: DutiesView; retrySync: (localId: string) => void }) {
 	const session = attendance.active;
@@ -220,7 +232,7 @@ function OnSite({ attendance, duties, retrySync }: { attendance: AttendanceView;
 			<OnSiteCard
 				session={session}
 				busy={attendance.busy}
-				onCheckOut={() => void attendance.checkOut()}
+				onCheckOut={() => confirmCheckOut(duties.duties.length, () => void attendance.checkOut())}
 				onRetrySync={session.sync_error ? () => retrySync(session.local_id) : undefined}
 			/>
 			<DutiesCard duties={duties.duties} busy={attendance.startingChecks} onStart={() => void attendance.startChecks()} />

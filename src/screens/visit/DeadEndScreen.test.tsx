@@ -14,7 +14,13 @@ jest.mock("@/auth/AuthProvider", () => ({
 	}),
 }));
 
-beforeEach(() => jest.clearAllMocks());
+const mockHandoff = { current: { fromCleaner: false, goBack: jest.fn() } };
+jest.mock("@/cleaner/useHandoff", () => ({ useHandoff: () => mockHandoff.current }));
+
+beforeEach(() => {
+	jest.clearAllMocks();
+	mockHandoff.current = { fromCleaner: false, goBack: jest.fn() };
+});
 
 test("each reason says what happened and what to do about it", async () => {
 	mockStatus.current = "signed_out";
@@ -43,6 +49,20 @@ test("a signed-in agent gets a way back, because they do have somewhere to be", 
 
 	fireEvent.press(screen.getByRole("button", { name: "Back to your blocks" }));
 	expect(router.replace).toHaveBeenCalledWith("/(app)");
+});
+
+test("a cleaner handed off mid-visit goes back to their site visit, not their blocks", async () => {
+	// Their attendance timer is still running behind this screen. "Back to your
+	// blocks" is somewhere they are not going; the visit they left is. Same
+	// split as the web DeadEndScreen.
+	mockStatus.current = "signed_in";
+	mockHandoff.current = { fromCleaner: true, goBack: jest.fn() };
+	await render(<DeadEndScreen reason="expired" token="tok-1" />);
+
+	expect(screen.queryByRole("button", { name: "Back to your blocks" })).toBeNull();
+	fireEvent.press(screen.getByRole("button", { name: "Back to your site visit" }));
+	// Nothing was submitted on this dead end.
+	expect(mockHandoff.current.goBack).toHaveBeenCalledWith(false);
 });
 
 test("still no retry, for anyone", async () => {

@@ -57,10 +57,26 @@ export async function pushAttendance(session: AttendanceSession): Promise<void> 
 		// check-out that can never land would be re-POSTed for the life of the
 		// install. This is the same fix visitSync carries for a spent token.
 		if (unfixable(err)) {
-			await saveAttendance({ ...latest, sync_error: { message: err.message, at: Date.now() } });
+			await persistMerged(latest, { sync_error: { message: err.message, at: Date.now() } });
 		}
 		throw err;
 	}
+}
+
+/**
+ * Persist the pass's progress by re-reading the CURRENT row and merging only
+ * the fields this pass changed. The UI writes concurrently: a check-out can
+ * land in the database while the check-in request is still in flight, and
+ * saving this pass's own snapshot would erase it - the row would say "still
+ * on site" with synced_in set, so attendanceHasWork would never offer the
+ * check-out again. Falls back to the snapshot when the re-read comes up
+ * empty, which loses nothing the old behaviour had.
+ */
+async function persistMerged(snapshot: AttendanceSession, patch: Partial<AttendanceSession>): Promise<AttendanceSession> {
+	const current = (await allAttendance()).find((s) => s.local_id === snapshot.local_id) ?? snapshot;
+	const merged = { ...current, ...patch };
+	await saveAttendance(merged);
+	return merged;
 }
 
 async function push(session: AttendanceSession, onProgress: (session: AttendanceSession) => void): Promise<void> {
@@ -71,9 +87,10 @@ async function push(session: AttendanceSession, onProgress: (session: Attendance
 		// Persisted before the check-out is attempted. If the signal dies in
 		// between, the next pass must not repeat a check-in that landed - it
 		// would be harmless (the server is idempotent) but it would also mean
-		// the local row never learns the session id.
-		current = { ...current, server_id: serverId, synced_in: true };
-		await saveAttendance(current);
+		// the local row never learns the session id. Merged, not snapshotted:
+		// the merge also picks up a check-out written mid-flight, so this same
+		// pass carries straight on and sends it.
+		current = await persistMerged(current, { server_id: serverId, synced_in: true });
 		onProgress(current);
 	}
 
@@ -82,8 +99,7 @@ async function push(session: AttendanceSession, onProgress: (session: Attendance
 	if (current.synced_out) return;
 
 	await checkOut(current.local_id, current.check_out);
-	current = { ...current, synced_out: true };
-	await saveAttendance(current);
+	current = await persistMerged(current, { synced_out: true });
 	onProgress(current);
 
 	// Both ends are on the server, which is now the record of what happened.

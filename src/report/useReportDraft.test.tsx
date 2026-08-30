@@ -84,6 +84,28 @@ test("a valid report is saved and queued, in that order", async () => {
 	expect(db.saveReport.mock.invocationCallOrder[0]).toBeLessThan(engine.sync.mock.invocationCallOrder[0]);
 });
 
+test("a save the device refuses is said out loud, not left as an unhandled rejection", async () => {
+	// saveReport throws on storage failure by design: by the time someone hits
+	// Send they have walked away from the problem, and a stopped spinner with
+	// no message reads as sent. The form must say the phone does not have it.
+	db.saveReport.mockRejectedValue(new Error("database or disk is full"));
+	const { result } = await mount();
+	await act(async () => result.current.setNote("Bin store door won't latch."));
+
+	let sent: boolean | undefined;
+	await act(async () => {
+		sent = await result.current.send();
+	});
+
+	expect(sent).toBe(false);
+	expect(result.current.error).toBe("Couldn't save the report on this phone. Try again.");
+	expect(result.current.busy).toBe(false);
+	// Nothing was persisted, so nothing is offered to the queue.
+	expect(engine.sync).not.toHaveBeenCalled();
+	// The draft is untouched - trying again costs one tap, not a retype.
+	expect(result.current.draft.note).toBe("Bin store door won't latch.");
+});
+
 test("a report still sends when no position can be had", async () => {
 	// A bin store rarely has a fix. Losing the report over it would be absurd.
 	geo.captureReportFix.mockResolvedValue(null);
