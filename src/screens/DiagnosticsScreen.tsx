@@ -18,7 +18,6 @@ import type { AttendanceSession } from "@/db/types";
 import { getDatabase, LATEST_VERSION } from "@/db/database";
 import { storeUsageBytes } from "@/db/photoStore";
 import { allReports } from "@/db/reports";
-import { observabilityEnabled } from "@/lib/observability";
 import { updateLabel, useUpdateState } from "@/lib/updates";
 import { backendSummary } from "@/lib/config";
 import { BUILD_COMMIT, versionLabel } from "@/lib/version";
@@ -108,7 +107,9 @@ export function DiagnosticsScreen() {
 				{/* "Have you got the fix yet?" is asked down a phone line, and until
 				    now nothing on the phone could answer it. */}
 				<Row label="Updates" value={updateLabel(update)} />
-				<Row label="Crash reports" value={observabilityEnabled() ? "on" : "off (no DSN in this build)"} />
+				{/* Static by decision (2026-08-20): no crash reporting, ever. The row
+				    stays so the answer down a phone line is "none", not a shrug. */}
+				<Row label="Crash reports" value="none" />
 				<Row label="Supabase" value={snapshot?.backend ?? "..."} />
 				<Row label="Database version" value={`${snapshot?.dbVersion ?? "..."} (expected ${LATEST_VERSION})`} />
 				<Row label="Journal mode" value={snapshot?.journalMode ?? "..."} />

@@ -53,10 +53,6 @@
 				}
 			]
 		},
-		"web": {
-			"output": "static",
-			"favicon": "./assets/images/favicon.png"
-		},
 		"plugins": [
 			"expo-router",
 			[
@@ -93,8 +89,7 @@
 					"isIosBackgroundLocationEnabled": false,
 					"isAndroidBackgroundLocationEnabled": false
 				}
-			],
-			"@sentry/react-native"
+			]
 		],
 		"experiments": {
 			"typedRoutes": true,

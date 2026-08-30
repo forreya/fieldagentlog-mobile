@@ -4,6 +4,10 @@ Work that must ride the next NATIVE build, batched here because every item chang
 fingerprint runtime version - doing any of it casually would cut build 9 off from OTA updates
 while it is the live release.
 
+**Landed on main 2026-08-30.** From that commit, updates published from main no longer apply
+to build 9 - the plan above, now in effect. The preview builds and smoke checklist below are
+still owed before the production build.
+
 ## Remove Sentry entirely (decided 2026-08-20: not wanted, ever)
 
 - `@sentry/react-native` from package.json and the plugin entry in app.json
@@ -20,7 +24,8 @@ while it is the live release.
   publishes work around it until this lands.
 - `react-native-reanimated`, `react-native-worklets`
 - `expo-status-bar` - unused
-- `expo-system-ui` - CHECK FIRST: may back `userInterfaceStyle` on Android via config plugin
+- `expo-system-ui` - KEPT after checking: it does back `userInterfaceStyle` on Android, which
+  is set to "light" in app.json
 
 ## How to do it safely
 

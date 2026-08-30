@@ -167,9 +167,9 @@ Each build profile listens to the channel of the same name (`eas.json`). Two
 flags are load-bearing. `--environment` makes the bundle read the EAS-hosted
 env vars and ignore local `.env` files - without it, a publish from a machine
 whose `.env` points at the local harness would inline that address into the
-production bundle. Per-platform `-p` is a workaround: `--platform all` tries to
-export the vestigial web target and fails on expo-sqlite (goes away with the
-web block, `docs/build-10-cleanup.md`).
+production bundle. Per-platform `-p` dates from when a vestigial web target
+made `--platform all` fail on expo-sqlite; the target went in the build 10
+cleanup, but per-platform is what has been verified to work.
 
 ### When it lands
 
@@ -208,12 +208,9 @@ Worth doing once per SDK bump, on a real build - Expo Go cannot run OTA.
 ## Crash reports
 
 There are none, by decision (2026-08-20): no Sentry project will ever be
-created. The integration shipped dormant in H3 - off without a DSN, and no DSN
-exists anywhere - and is removed wholesale in the build 10 cleanup
-(`docs/build-10-cleanup.md`). Until that lands, `SENTRY_DISABLE_AUTO_UPLOAD=true`
-stays in the preview and production build profiles: it stops the gradle/xcode
-source-map upload step failing the build over credentials that will never be
-set. **Diagnostics → Crash reports** correctly reads "none" on every build.
+created. The dormant integration was removed in the build 10 cleanup
+(`docs/build-10-cleanup.md`). **Diagnostics → Crash reports** reads "none" on
+every build.
 
 ## What identifies a build
 

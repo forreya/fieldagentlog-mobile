@@ -1,6 +1,7 @@
 {
 	"cli": {
-		"appVersionSource": "remote"
+		"appVersionSource": "remote",
+		"requireCommit": true
 	},
 	"build": {
 		"development": {
@@ -11,16 +12,14 @@
 		"preview": {
 			"distribution": "internal",
 			"env": {
-				"EXPO_PUBLIC_SUPABASE_URL": "https://etkiptvblskvyfzdbsic.supabase.co",
-				"SENTRY_DISABLE_AUTO_UPLOAD": "true"
+				"EXPO_PUBLIC_SUPABASE_URL": "https://etkiptvblskvyfzdbsic.supabase.co"
 			},
 			"channel": "preview"
 		},
 		"production": {
 			"autoIncrement": true,
 			"env": {
-				"EXPO_PUBLIC_SUPABASE_URL": "https://etkiptvblskvyfzdbsic.supabase.co",
-				"SENTRY_DISABLE_AUTO_UPLOAD": "true"
+				"EXPO_PUBLIC_SUPABASE_URL": "https://etkiptvblskvyfzdbsic.supabase.co"
 			},
 			"channel": "production"
 		}
