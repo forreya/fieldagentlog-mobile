@@ -142,4 +142,27 @@ describe("buildRecord", () => {
 		expect(record.submit_requested_at).toBe(77);
 		expect(record.cleaner_handoff).toBe(true);
 	});
+
+	test("stamps the live handoff marker onto the record, where it outlives the marker", () => {
+		// The production path: marker set, cached record from before the handoff
+		// without the flag. The record must come out marked a cleaner visit.
+		expect(buildRecord("tok", packet(), cachedRecord(), 1_000, true).cleaner_handoff).toBe(true);
+		expect(buildRecord("tok", packet(), undefined, 1_000, true).cleaner_handoff).toBe(true);
+		// Once a cleaner visit, always a cleaner visit - a later open with the
+		// marker gone (the cleaner headed home) keeps the cached flag.
+		expect(buildRecord("tok", packet(), cachedRecord({ cleaner_handoff: true }), 1_000, false).cleaner_handoff).toBe(true);
+		expect(buildRecord("tok", packet(), cachedRecord(), 1_000, false).cleaner_handoff).toBe(false);
+	});
+});
+
+describe("the handoff reaches the record through decideLoad", () => {
+	test("on a fresh fetch and on the offline cached fallback alike", () => {
+		const fetched = decideLoad("tok", cachedRecord(), ok(), 1_000, true);
+		if (fetched.status !== "ready") throw new Error("expected ready");
+		expect(fetched.record.cleaner_handoff).toBe(true);
+
+		const stale = decideLoad("tok", cachedRecord(), failed(new ApiError("network", "no signal")), 1_000, true);
+		if (stale.status !== "ready") throw new Error("expected ready");
+		expect(stale.record.cleaner_handoff).toBe(true);
+	});
 });

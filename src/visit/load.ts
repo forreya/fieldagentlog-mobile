@@ -47,13 +47,21 @@ export function lockedRecord(cached?: VisitRecord): SubmittedVisit | null {
 	return cached?.submitted ? { ...cached, submitted: cached.submitted } : null;
 }
 
-/** Decide what to show, given whatever this device holds and how the fetch went. */
-export function decideLoad(token: string, cached: VisitRecord | undefined, outcome: FetchOutcome, now: number = Date.now()): VisitLoad {
+/** Decide what to show, given whatever this device holds and how the fetch went.
+ *  `handoff` is whether the live cleaner-handoff marker points at this token;
+ *  buildRecord stamps it onto the record so it outlives the marker. */
+export function decideLoad(
+	token: string,
+	cached: VisitRecord | undefined,
+	outcome: FetchOutcome,
+	now: number = Date.now(),
+	handoff = false,
+): VisitLoad {
 	const locked = lockedRecord(cached);
 	if (locked) return { status: "submitted", record: locked };
 
 	if (outcome.ok) {
-		return { status: "ready", record: buildRecord(token, outcome.packet, cached, now), fromCache: false };
+		return { status: "ready", record: buildRecord(token, outcome.packet, cached, now, handoff), fromCache: false };
 	}
 
 	const { error } = outcome;
@@ -65,7 +73,7 @@ export function decideLoad(token: string, cached: VisitRecord | undefined, outco
 
 	// Couldn't reach the server, but this device already has the visit: carry on.
 	if (cached?.packet) {
-		return { status: "ready", record: buildRecord(token, cached.packet as VisitPacket, cached, now), fromCache: true };
+		return { status: "ready", record: buildRecord(token, cached.packet as VisitPacket, cached, now, handoff), fromCache: true };
 	}
 
 	if (error instanceof ApiError && error.kind === "network") return { status: "offline_no_cache" };

@@ -4,7 +4,7 @@
 // deliberate rather than accidental: the wizard says "intolerable" because that
 // is what a fire-risk severity is called on site, while the column's CHECK
 // constraint accepts "critical". Likewise the FRA control offers
-// outstanding/resolved, and the server stores open/in_progress/done. Translate
+// outstanding/in_progress/resolved, and the server stores open/in_progress/done. Translate
 // once, at the boundary, exactly as the web app does in src/lib/sync.ts.
 
 import type { Severity, SubmitBody, SubmitResult, WireFraStatus, WireSeverity } from "@/api/contract";
@@ -19,6 +19,7 @@ const SEVERITY_WIRE: Record<Severity, WireSeverity> = {
 
 const FRA_STATUS_WIRE: Record<FraUpdate["status"], WireFraStatus> = {
 	outstanding: "open",
+	in_progress: "in_progress",
 	resolved: "done",
 };
 

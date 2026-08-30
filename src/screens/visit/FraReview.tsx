@@ -1,16 +1,16 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { FraAction, FraActionStatus } from "@/api/contract";
+import { FRA_STATUS_LABEL, type FraAction, type FraActionStatus } from "@/api/contract";
 import { Card } from "@/components/Screen";
 import { TextField } from "@/components/TextField";
 import type { VisitRecord } from "@/db/types";
 import { colors, fonts, radii, space, TAP } from "@/theme/tokens";
 import type { WizardAction } from "@/visit/wizard";
 
-const OPTIONS: { value: FraActionStatus; label: string }[] = [
-	{ value: "outstanding", label: "Still outstanding" },
-	{ value: "resolved", label: "Resolved" },
-];
+const OPTIONS: { value: FraActionStatus; label: string }[] = (["outstanding", "in_progress", "resolved"] as const).map((value) => ({
+	value,
+	label: FRA_STATUS_LABEL[value],
+}));
 
 /** The server sends the assessment's own wording, so match loosely. */
 function severityColor(severity: string): string {

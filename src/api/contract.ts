@@ -13,7 +13,25 @@ export type Verdict = "pass" | "fail" | "na";
 
 /** UI vocabulary. Mapped to the wire values at the submit boundary. */
 export type Severity = "low" | "medium" | "high" | "intolerable";
-export type FraActionStatus = "outstanding" | "resolved";
+
+/**
+ * Where a pre-existing FRA action stands after this visit.
+ *
+ * These map 1:1 onto the server's own open/in_progress/done - see
+ * FRA_STATUS_WIRE in src/sync/submitBody.ts. "in_progress" is NOT cosmetic:
+ * an action that BalanceBuddy already has at in_progress (a contractor booked,
+ * a quote accepted) used to be downgraded to "open" the moment an agent
+ * confirmed it was still outstanding, silently losing that. An agent who wants
+ * to say "still outstanding" now has a way to say it that doesn't overwrite
+ * what the office knows.
+ */
+export type FraActionStatus = "outstanding" | "in_progress" | "resolved";
+
+export const FRA_STATUS_LABEL: Record<FraActionStatus, string> = {
+	outstanding: "Still outstanding",
+	in_progress: "Work under way",
+	resolved: "Resolved",
+};
 
 /** What the database's CHECK constraints actually accept. */
 export type WireSeverity = "low" | "medium" | "high" | "critical";
@@ -46,6 +64,18 @@ export interface FraAction {
 	title: string;
 	detail: string;
 	severity: string;
+	/** Fields added by visit-packet alongside the legacy `detail` string.
+	 *  Optional because an older packet (or a cached one) won't carry them -
+	 *  the UI degrades to `detail` + `severity` when they're absent. */
+	risk?: string;
+	/** The action's current state in BalanceBuddy: open | in_progress | done. */
+	status?: string;
+	assignee?: string | null;
+	/** YYYY-MM-DD, or null when the assessor set no date. */
+	deadline?: string | null;
+	notes?: string | null;
+	/** Server-computed: deadline is set and already past. */
+	overdue?: boolean;
 }
 
 export interface VisitPacket {

@@ -124,6 +124,14 @@ describe("fire risk assessment actions", () => {
 		expect(dispatch).toHaveBeenCalledWith({ type: "SET_FRA", actionId: "a1", status: "resolved", note: "" });
 	});
 
+	test("offer all three statuses, so 'work under way' need not be misfiled as outstanding", async () => {
+		const { dispatch } = await show(state(DONE));
+		expect(await screen.findByLabelText("Still outstanding")).toBeTruthy();
+		expect(screen.getByLabelText("Resolved")).toBeTruthy();
+		fireEvent.press(screen.getByLabelText("Work under way"));
+		expect(dispatch).toHaveBeenCalledWith({ type: "SET_FRA", actionId: "a1", status: "in_progress", note: "" });
+	});
+
 	test("pressing the chosen status again clears it, back to untouched", async () => {
 		const wizard = state(DONE, { fra_updates: { a1: { status: "resolved", note: "" } } });
 		const { dispatch } = await show(wizard);

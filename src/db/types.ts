@@ -4,7 +4,7 @@
 // them as a file on disk with only the path in the row. Ten full-resolution
 // photos live comfortably on a filesystem and not at all in a database row.
 
-import type { LocalFile, Severity, Verdict } from "@/api/contract";
+import type { FraActionStatus, LocalFile, Severity, Verdict } from "@/api/contract";
 
 /** One GPS reading, taken at a check-in, check-out, or report. */
 export interface GeoPoint {
@@ -28,7 +28,7 @@ export interface CheckResult {
 }
 
 export interface FraUpdate {
-	status: "outstanding" | "resolved";
+	status: FraActionStatus;
 	note: string;
 }
 

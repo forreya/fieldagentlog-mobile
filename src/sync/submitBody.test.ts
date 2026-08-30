@@ -75,15 +75,30 @@ describe("results", () => {
 });
 
 describe("fire risk assessment updates", () => {
-	test("outstanding and resolved map to the statuses the column accepts", () => {
+	test("every status maps to the wire word the column accepts", () => {
 		const body = buildSubmitBody(
-			record({ fra_updates: { a1: { status: "outstanding", note: "" }, a2: { status: "resolved", note: "Replaced" } } }),
+			record({
+				fra_updates: {
+					a1: { status: "outstanding", note: "" },
+					a2: { status: "resolved", note: "Replaced" },
+					a3: { status: "in_progress", note: "" },
+				},
+			}),
 			NOW,
 		);
 		expect(body.fra_action_updates).toEqual([
 			{ id: "a1", status: "open" },
 			{ id: "a2", status: "done", note: "Replaced" },
+			{ id: "a3", status: "in_progress" },
 		]);
+	});
+
+	test("in_progress survives the wire untouched - confirming it must not downgrade to open", () => {
+		// The office may already hold an action at in_progress (a contractor
+		// booked); the whole point of the third status is that saying so does
+		// not overwrite it with "open".
+		const body = buildSubmitBody(record({ fra_updates: { a1: { status: "in_progress", note: "Booked for Tuesday" } } }), NOW);
+		expect(body.fra_action_updates).toEqual([{ id: "a1", status: "in_progress", note: "Booked for Tuesday" }]);
 	});
 
 	test("an untouched assessment submits no updates at all", () => {

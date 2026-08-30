@@ -26,7 +26,7 @@ export function inHouseChecks(packet: VisitPacket): PacketCheck[] {
  * re-fetch, and the app being killed - which is the whole point of persisting
  * them in the first place.
  */
-export function buildRecord(token: string, packet: VisitPacket, cached?: VisitRecord, now: number = Date.now()): VisitRecord {
+export function buildRecord(token: string, packet: VisitPacket, cached?: VisitRecord, now: number = Date.now(), handoff = false): VisitRecord {
 	const checks = inHouseChecks(packet);
 	const results: Record<string, CheckResult> = {};
 	for (const check of checks) {
@@ -44,6 +44,9 @@ export function buildRecord(token: string, packet: VisitPacket, cached?: VisitRe
 		updated_at: now,
 		submit_requested_at: cached?.submit_requested_at,
 		submitted: cached?.submitted ?? null,
-		cleaner_handoff: cached?.cleaner_handoff,
+		// Once a cleaner visit, always a cleaner visit - the live marker is
+		// cleared when the handoff ends, so the flag is stamped onto the record
+		// here and the persisted copy keeps it after that.
+		cleaner_handoff: Boolean(cached?.cleaner_handoff) || handoff,
 	};
 }

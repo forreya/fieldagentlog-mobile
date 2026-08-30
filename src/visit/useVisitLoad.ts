@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { fetchPacket } from "@/api/visit";
+import { isHandoffFor } from "@/cleaner/handoff";
 import { loadVisit, saveVisit } from "@/db/visits";
 
 import { decideLoad, lockedRecord, type FetchOutcome, type VisitLoad } from "./load";
@@ -26,7 +27,10 @@ export function useVisitLoad(token: string): VisitLoadView {
 	// setting it again on mount would be a wasted cascading render. A retry is
 	// the only case that needs it, and does it itself.
 	const load = useCallback(async () => {
-		const cached = await loadVisit(token);
+		// Read the live handoff marker alongside the cache: the record must be
+		// stamped as a cleaner visit at build time, because the marker is
+		// cleared when the cleaner heads home while the record lives on.
+		const [cached, handoff] = await Promise.all([loadVisit(token), isHandoffFor(token)]);
 		// A locked visit needs no request, which is what makes reopening a
 		// finished visit work with no signal at all.
 		const locked = lockedRecord(cached);
@@ -42,7 +46,7 @@ export function useVisitLoad(token: string): VisitLoadView {
 			outcome = { ok: false, error };
 		}
 
-		const next = decideLoad(token, cached, outcome);
+		const next = decideLoad(token, cached, outcome, Date.now(), handoff);
 		// Persist as soon as there is something to persist: from here on the
 		// visit survives the app being killed, which is the whole promise.
 		if (next.status === "ready") await saveVisit(next.record);
