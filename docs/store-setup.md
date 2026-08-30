@@ -48,7 +48,8 @@ None of these are console work, and all three stop a submission dead:
    /privacy/delete for Play's data-deletion requirement.
 2. ~~**A reviewer login.**~~ Done: `appreview@genapm.com`, scoped to the ZZ REVIEW sandbox org.
    The password is in the team password manager, not here.
-3. **Screenshots.** Simulator captures are fine and allowed. Still to do, after Milestone F.
+3. **Screenshots.** Simulator captures are fine and allowed. Still to do; the UI is final, so
+   nothing blocks taking them now.
 
 ---
 
@@ -237,17 +238,19 @@ updates are usually much quicker.
 
 # What is left
 
-Both app records are done (2026-08-16). In order:
+Both app records are done (2026-08-16), and the privacy policy is live at
+https://fieldagentlog.com/privacy (`public/privacy/index.html` in the `fieldagent` repo, plus
+`public/privacy/delete/` for Play's data-deletion page). The launcher icon and splash now carry
+the FieldAgent mark, and the Play 512 icon and feature graphic sit ready in `assets/store/`. In
+order:
 
-1. **Privacy policy** on fieldagentlog.com - `public/privacy.html` in the `fieldagent` repo. Blocks
-   the production track on both stores, though not the internal ones.
-2. **Play service account** - fiddly, unrelated to anything else, and the only thing standing
+1. **Play service account** - fiddly, unrelated to anything else, and the only thing standing
    between you and `eas submit --platform android`.
-3. **Declarations and listings** - answerable now, no build required.
-4. **Screenshots** - once the UI is final, i.e. after Milestone F.
-5. **Submit** - not before Milestone F. Apple guideline 4.2 rejects thin apps and a rejection stays
-   on the account's record; the earliest defensible submission is the full inspection wizard plus
-   the cleaner and site-report flows.
+2. **Declarations and listings** - answerable now, no build required; the listing art above is
+   ready to upload.
+3. **Screenshots** - the UI is final, so these can be taken now. Simulator captures are allowed.
+4. **Submit** - the full inspection wizard plus the cleaner and site-report flows are shipped, so
+   Apple guideline 4.2 (minimum functionality) is met; submission waits only on 1-3.
 
 **Version numbers** follow Gena Go: `1.0.x`, the patch bumped by hand in `app.json` per release,
 starting at `1.0.0`. Build numbers are not - they stay automatic here (`appVersionSource: remote`),

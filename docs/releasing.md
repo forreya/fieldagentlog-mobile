@@ -2,9 +2,9 @@
 
 Registration to first public version, then the routine loop.
 
-**Where we are (2026-08-16): stages 0-4 are done.** Both store records exist, and `1.0.0 (3)` is on
-TestFlight and on Play's internal track. Stage 6 is the loop to follow from here; stage 5 is the
-public submission, gated on Milestone F. The one-time console work is in `store-setup.md`.
+**Where we are (2026-08-30): `1.0.1 (9)` is on TestFlight and on Play's internal track.** Stages
+0-4 are done and stage 6 is the loop being followed; stage 5 - the public submission - is what
+remains, gated on the console work listed at the bottom of `store-setup.md`.
 
 Gena Go's runbook (`../../gena-mobile/README.md`) is the reference for anything not covered here.
 We deliberately differ in three places - **don't "fix" these back**:
@@ -24,13 +24,10 @@ Console and Expo. It ships as a second app under the same teams, so the store li
 same seller name as Gena Go. No new enrolment, no D-U-N-S wait; Play production access is already
 unlocked by the published app, so new-account closed-testing rules don't apply.
 
-Still needed:
-
-1. **Privacy policy URL** - both stores require a public one, and this app collects precise
-   location, photos and email. Blocker for submission, not for building. Host it on
-   fieldagentlog.com.
-2. **Roles** - whoever runs releases needs Admin/App Manager in App Store Connect and equivalent
-   in Play Console (already true for anyone shipping Gena Go).
+The two things this stage still needed are both done: the **privacy policy** is live at
+https://fieldagentlog.com/privacy (plus /privacy/delete for Play's data-deletion requirement),
+and **roles** were already in place - anyone shipping Gena Go has Admin/App Manager in App Store
+Connect and the equivalent in Play Console.
 
 ## Stage 1 - Project setup (one-time)
 

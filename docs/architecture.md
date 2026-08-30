@@ -1,13 +1,13 @@
 # Architecture
 
-Module map and the rules that keep it honest. Complete as of Milestone B; the
-UI layers arrive in C-F.
+Module map and the rules that keep it honest.
 
 ## Layers
 
 | Directory          | Owns                                                               | Never does                      |
 | ------------------ | ------------------------------------------------------------------ | ------------------------------- |
-| `src/app`          | Routes: render, dispatch, navigate                                 | Fetch, retry, touch storage     |
+| `src/app`          | Routes: one-line re-exports of `src/screens`                       | Hold anything but routes        |
+| `src/screens`      | Screens: render, dispatch, navigate (tests beside them)            | Fetch, retry, touch storage     |
 | `src/components`   | Presentational primitives                                          | Know about the network          |
 | `src/theme`        | Design tokens ported from the web app                              | -                               |
 | `src/lib`          | Config and small platform-free helpers                             | -                               |
@@ -17,6 +17,9 @@ UI layers arrive in C-F.
 | `src/sync`         | Queues, ordering, retries, backoff                                 | Render                          |
 | `src/data`         | Server state: cached reads, freshness                              | Queue writes                    |
 | `src/auth`         | Session storage, role resolution                                   | Decide permissions              |
+| `src/visit`        | Inspector wizard: packet load, answers, photos, submit hooks       | Bypass `src/api`/`src/db`       |
+| `src/cleaner`      | Attendance sessions and the wizard handoff                         | Bypass `src/api`/`src/db`       |
+| `src/report`       | Site-report drafts: validation, capture-time save, send            | Bypass `src/api`/`src/db`       |
 | `src/bootstrap.ts` | Composition root: opens storage, registers queues, starts triggers | Contain logic, hold queue state |
 
 A screen that fetches is wrong even if it works. `src/bootstrap.ts` sits
@@ -102,10 +105,15 @@ being slow costs a field worker standing in a car park.
 ## The shared mirror
 
 Some logic must behave identically in this app and the FieldAgent web app
-(`../fieldagent`): due-date maths, dashboard assembly, the wire contract. Two
-codebases computing "overdue" differently is a compliance bug, not a cosmetic
-one. Nothing enforces agreement by itself, and the gena-web / gena-mobile pair
+(`../fieldagent`): due-date maths and dashboard assembly. Two codebases
+computing "overdue" differently is a compliance bug, not a cosmetic one.
+Nothing enforces agreement by itself, and the gena-web / gena-mobile pair
 shows the failure mode: a hand-maintained mirror that silently drifts.
+
+The **wire contract is not in the mirror** - it is hand-synced. When an Edge
+Function's shapes change, check `src/api/contract.ts` and
+`src/sync/submitBody.ts` here against the web app's `src/lib/types.ts` and
+`src/lib/sync.ts` yourself; `shared-mirror.json` does not protect them.
 
 `shared-mirror.json` lists the files that must stay **byte-identical**, with a
 recorded hash for each. `scripts/mirror.mjs` has three modes:

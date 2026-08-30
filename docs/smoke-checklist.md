@@ -139,3 +139,38 @@ The reason the app exists, for a cleaner. Do the offline half on a real airplane
       not in memory.
 - [ ] Open an unrelated visit link cold: no "back to your site visit" anywhere. The marker is
       keyed by token, so an abandoned handoff must not leak into somebody else's visit.
+
+## F - Site reports
+
+Reporting is offered wherever someone might see a problem: the cleaner home (checked in or not),
+the on-site card, and a block's own screen. Do the offline half on a real airplane mode.
+
+- [ ] **Report an issue** from the on-site card: the site is stated as a fact, no picker.
+- [ ] Opened cold from the cleaner home: the picker lists the cleaner's own sites, from cache,
+      with no signal. A note is required; a report with neither site nor note is refused with
+      words, not a dead Send button.
+- [ ] Photos: take one, choose one from the library, remove one. The cap of 10 is stated, and
+      hitting it says so instead of silently ignoring the eleventh.
+- [ ] Tapping Send never waits on the network: the location fix is best-effort (8s at worst,
+      denied or indoors is fine) and the report is on the phone before anything is posted.
+- [ ] **Send with no signal**: the form closes, and the entry point's hint counts it -
+      "1 report waiting to send". No error, because nothing has gone wrong.
+- [ ] **Your reports** shows the queued report first, above the sent ones, tagged "Waiting":
+      "Saved on this phone" - with the photo count still to send when photos are attached.
+- [ ] Restore signal: the report sends itself - photos first, the report only once every photo
+      has a server ref - and the row moves to the sent list with the server's status on it.
+- [ ] **Force-stop while queued**, relaunch, then restore signal: it still sends. The queue is
+      the database, not memory.
+- [ ] Reporting while checked in does not touch the visit: the on-site timer keeps running, and
+      the report is tied to that shift.
+- [ ] A report that permanently fails reads "Not sent" with the reason, and the entry point's
+      hint says it needs attention rather than counting it as merely waiting.
+- [ ] **Try again** on a failed report re-queues it - and does not create a duplicate on the
+      server (the client_id is minted at capture, so a retry after a lost response is the same
+      report).
+- [ ] **Discard** asks first, naming the site and saying the report and its photos are removed
+      from this device for good. Cancel leaves everything in place.
+- [ ] Your reports states: loading is a note, nothing ever reported says so plainly, and a failed
+      server load with local or sent rows underneath is a caption, never a blocked screen. With
+      nothing at all, it offers a retry.
+- [ ] Pull to refresh updates the sent list without disturbing the pending rows.

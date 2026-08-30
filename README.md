@@ -5,10 +5,11 @@ inspectors opening per-visit links, external field agents, cleaners logging geo-
 attendance, and staff. Native sibling of the FieldAgent PWA (`../fieldagent` →
 fieldagentlog.com); both stay in service.
 
-**Status: Milestone B (core plumbing) complete** - API clients, offline queues, sync
-engine and auth exist and are wired; the UI flows arrive in C-F. The build plan lives at `../FIELDAGENT-MOBILE-PLAN.md` -
-a planning artifact, not something to load into tool context. Invariants for coding agents:
-[CLAUDE.md](CLAUDE.md).
+**Status: `1.0.1 (9)` is live on TestFlight and Play's internal track.** All four persona flows
+are shipped - inspector wizard, agent, cleaner, staff. Public store submission is the remaining
+step; the runbook is [docs/releasing.md](docs/releasing.md). The build plan lives at
+`../FIELDAGENT-MOBILE-PLAN.md` - a planning artifact, not something to load into tool context.
+Invariants for coding agents: [CLAUDE.md](CLAUDE.md).
 
 ## Develop
 
@@ -50,5 +51,5 @@ Where the app stands today:
 - **Dev server:** `npm start` against a simulator/device.
 - **Internal build:** `eas build --profile preview --platform ios|android` - signed
   internal-distribution build against production BalanceBuddy.
-- Beta on the stores and production release: see the doc; the app is not ready to submit yet
-  (Apple guideline 4.2 rejects thin apps).
+- **On the stores:** `1.0.1 (9)` on TestFlight and Play's internal track. Public submission is
+  pending - what remains is in [docs/store-setup.md](docs/store-setup.md).

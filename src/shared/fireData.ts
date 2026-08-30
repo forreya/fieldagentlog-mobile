@@ -1,3 +1,7 @@
+// MIRRORED FILE - do not edit in isolation.
+// This file must stay byte-identical in both repos (see shared-mirror.json in
+// fieldagentlog-mobile): fieldagent/src/lib/fireData.ts <-> fieldagentlog-mobile/src/shared/fireData.ts.
+// Change both copies in the same piece of work and update the recorded hash.
 // Reads the staff dashboard straight from BalanceBuddy via the authenticated
 // Supabase client. RLS scopes every query to what the signed-in user may see:
 //   • blocks            → their organisation's managed blocks

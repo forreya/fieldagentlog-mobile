@@ -5,7 +5,7 @@
 		{
 			"local": "src/shared/fireData.ts",
 			"peer": "src/lib/fireData.ts",
-			"sha256": "8516350684ce919649be5835babfca6f31e21f62391230bbbbdc8a13a5dc931c",
+			"sha256": "d816d247b43cb14adb8b157bf36746746376c21f84aa634cdc5b2f6b234d2d9e",
 			"why": "Due-date maths, due-level thresholds and dashboard assembly. If these drift, the two clients disagree about whether a fire check is overdue."
 		}
 	],

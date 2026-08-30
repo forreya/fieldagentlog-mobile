@@ -40,7 +40,7 @@ Four permissions. Nothing else.
 | `NSPhotoLibraryUsageDescription` | Attaching an existing picture instead. |
 | `NSMotionUsageDescription` | Not a capability the app uses - a string Apple REQUIRES. expo-location's pod links CoreMotion (it can consult motion to sharpen a fix), and App Store Connect rejects any binary referencing that API without a purpose string (ITMS-90683, seen on 1.0.1 build 8). The string says plainly that motion is never tracked or stored. |
 
-Three strings. There is **no `UIBackgroundModes`** entry, which is what makes
+Four strings. There is **no `UIBackgroundModes`** entry, which is what makes
 the "never used in the background" line in the location string true rather than
 a claim.
 
