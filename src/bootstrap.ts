@@ -16,7 +16,7 @@ import { syncEngine } from "@/sync/engine";
 import { startSyncTriggers } from "@/sync/triggers";
 import { createAttendanceSource } from "@/sync/attendanceSync";
 import { createReportSource } from "@/sync/reportSync";
-import { createVisitSource } from "@/sync/visitSync";
+import { createVisitSource, sweepSubmittedVisits } from "@/sync/visitSync";
 
 /**
  * Every photo file some queue still needs: visit photos from their own table,
@@ -40,6 +40,9 @@ export async function referencedPhotoUris(): Promise<string[]> {
  * phone is full, which a user experiences as the camera failing.
  */
 async function sweepOrphanPhotos(): Promise<void> {
+	// Aged-out submitted visits go first: a photo row left under one would
+	// otherwise keep its file out of the sweep's reach forever.
+	await sweepSubmittedVisits(await allVisits());
 	// Every row in every table, not just visits opened this launch. The sweep
 	// deletes whatever it is not shown, so a narrower list would destroy the
 	// queued photos of a visit or report finished offline before they uploaded.

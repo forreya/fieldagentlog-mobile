@@ -1,9 +1,11 @@
-// The photo-source picker, and the platform difference that makes its button
-// order a correctness question rather than a style one.
+// The photo-source picker, the platform difference that makes its button
+// order a correctness question rather than a style one, and the thumbnail
+// that has to survive a remount.
 
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { Alert, Platform } from "react-native";
 
+import { getPhoto } from "@/db/photos";
 import type { CheckResult } from "@/db/types";
 
 import { PhotoCapture } from "./PhotoCapture";
@@ -11,6 +13,9 @@ import { PhotoCapture } from "./PhotoCapture";
 jest.mock("@/visit/photos", () => ({
 	capturePhoto: jest.fn(),
 	deniedMessage: () => "denied",
+}));
+jest.mock("@/db/photos", () => ({
+	getPhoto: jest.fn(),
 }));
 
 const emptyResult = { verdict: "fail", photo_local_id: null, photo_ref: null } as unknown as CheckResult;
@@ -57,4 +62,23 @@ test("both platforms offer the same three choices, however they are arranged", a
 	const android = await openPicker();
 
 	expect([...ios].sort()).toEqual([...android].sort());
+});
+
+test("a queued photo's thumbnail is restored on revisit", async () => {
+	// The preview lives in component state. Leaving a check and coming back
+	// used to show "Saved on this phone" with no image; the queue row still
+	// knows the file, so the thumbnail comes back from there.
+	let resolvePhoto!: (photo: unknown) => void;
+	(getPhoto as jest.Mock).mockReturnValue(new Promise((resolve) => (resolvePhoto = resolve)));
+	const queued = { verdict: "fail", photo_local_id: "p1", photo_ref: null } as unknown as CheckResult;
+
+	await render(<PhotoCapture token="t" checkId="c1" result={queued} onCaptured={jest.fn()} onCleared={jest.fn()} />);
+	await act(async () => {
+		resolvePhoto({ local_id: "p1", file: { uri: "file:///photos/p1.jpg", name: "p1.jpg", type: "image/jpeg" } });
+	});
+
+	const image = screen.getByLabelText("Photo of the fault");
+	// expo-image normalises `source` to an array.
+	expect(image.props.source).toEqual([{ uri: "file:///photos/p1.jpg" }]);
+	expect(getPhoto).toHaveBeenCalledWith("p1");
 });

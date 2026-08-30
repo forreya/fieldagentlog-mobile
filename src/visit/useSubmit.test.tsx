@@ -11,16 +11,24 @@ import type { ReactNode } from "react";
 import { ApiError } from "@/api/errors";
 import * as visitApi from "@/api/visit";
 import { resetDatabase } from "@/db/database";
+import { addPendingPhoto } from "@/db/photos";
 import type { VisitRecord } from "@/db/types";
 import { loadVisit, saveVisit } from "@/db/visits";
 import { syncEngine } from "@/sync/engine";
 import { createVisitSource } from "@/sync/visitSync";
 
 import { useSubmit } from "./useSubmit";
+import { useWizard } from "./useWizard";
 
 jest.mock("expo-sqlite");
 jest.mock("@/api/visit");
-jest.mock("@/db/photoStore", () => ({ deleteStoredPhoto: jest.fn() }));
+jest.mock("@/db/photoStore", () => ({
+	deleteStoredPhoto: jest.fn(),
+	// Identity fakes: path resolution is photoStore's own concern, proven in
+	// its own suite.
+	storedKey: (uri: string) => uri,
+	resolvePhotoUri: (stored: string) => stored,
+}));
 
 const { __resetAllDatabases } = SQLite as unknown as { __resetAllDatabases: () => void };
 const api = visitApi as jest.Mocked<typeof visitApi>;
@@ -229,6 +237,62 @@ describe("what a landed submit invalidates", () => {
 		});
 
 		expect(spy).not.toHaveBeenCalled();
+	});
+});
+
+describe("a photo uploaded by a pass while the wizard is open", () => {
+	// The real wiring, exactly as VisitWizard mounts it: the wizard's live
+	// record feeds the submit hook.
+	function useVisitOnScreen(initial: VisitRecord) {
+		const wizard = useWizard(initial);
+		const submission = useSubmit(wizard.state.record, wizard.dispatch);
+		return { wizard, submission };
+	}
+
+	test("still reaches the submit body - a stale in-memory save must not drop it", async () => {
+		// The regression: a mid-visit pass uploads the photo and records the ref
+		// in the database, but the wizard's in-memory copy still points at the
+		// local id. At submit that stale copy used to overwrite the database
+		// record, the next pass treated the photo as dangling and cleared it,
+		// and the visit went up with no photo_ref - evidence silently gone.
+		api.uploadPhoto.mockResolvedValue({ ref: "server/p1" });
+		// Underground while photographing, so nothing uploads at capture time.
+		syncEngine.setOnline(false);
+		const { result } = await renderHook(() => useVisitOnScreen(record()), { wrapper });
+
+		// The inspector fails a check and photographs it: queue row first, then
+		// the answer points at it - the order capturePhoto uses.
+		await addPendingPhoto({
+			local_id: "p1",
+			token: TOKEN,
+			check_id: "c1",
+			file: { uri: "file:///p1.jpg", name: "p1.jpg", type: "image/jpeg" },
+			ref: null,
+			created_at: Date.now(),
+		});
+		await act(async () => {
+			result.current.wizard.dispatch({ type: "SET_VERDICT", checkId: "c1", verdict: "fail" });
+			result.current.wizard.dispatch({ type: "SET_SEVERITY", checkId: "c1", severity: "high" });
+			result.current.wizard.dispatch({ type: "SET_NOTE", checkId: "c1", note: "hinge sheared" });
+			result.current.wizard.dispatch({ type: "SET_PHOTO", checkId: "c1", localId: "p1" });
+		});
+		await waitFor(async () => expect((await loadVisit(TOKEN))?.results.c1?.photo_local_id).toBe("p1"));
+
+		// Signal returns mid-visit: the automatic pass uploads the photo and
+		// records the ref while the wizard's copy still names the local id.
+		await act(async () => {
+			syncEngine.setOnline(true);
+		});
+		await waitFor(async () => expect((await loadVisit(TOKEN))?.results.c1?.photo_ref).toBe("server/p1"));
+
+		await act(async () => {
+			await result.current.submission.submit();
+		});
+
+		await waitFor(() => expect(result.current.submission.submitted?.visit_id).toBe("v1"));
+		expect(api.uploadPhoto).toHaveBeenCalledTimes(1);
+		const sent = api.submitVisit.mock.calls[0][1].results.find((r) => r.check_id === "c1");
+		expect(sent?.photo_ref).toBe("server/p1");
 	});
 });
 

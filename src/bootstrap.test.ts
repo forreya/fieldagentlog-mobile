@@ -104,6 +104,19 @@ describe("the startup photo sweep", () => {
 		expect(sweep).toHaveBeenCalledWith([]);
 	});
 
+	test("clears an aged-out submitted visit first, so its files leave the keep-list", async () => {
+		// Submitted long ago: the record is only parse work on every pass, and a
+		// photo row still under its token would keep its file alive forever.
+		await saveVisit(record({ submitted: { visit_id: "v1", logbook_pdf_url: "u", completed_at: "2020-01-01T00:00:00Z" } }));
+		await addPendingPhoto(photo());
+
+		await bootstrap();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(await allVisits()).toHaveLength(0);
+		expect(sweep).toHaveBeenCalledWith([]);
+	});
+
 	test("keeps a queued report's photos - they share the directory with visit photos", async () => {
 		// The sweep deletes whatever it is not shown. A report can wait on this
 		// phone for days - offline, or held for an owner who is signed out - and

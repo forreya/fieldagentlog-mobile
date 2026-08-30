@@ -1,7 +1,8 @@
 import { Image } from "expo-image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { getPhoto } from "@/db/photos";
 import type { CheckResult } from "@/db/types";
 import { colors, fonts, radii, space, TAP } from "@/theme/tokens";
 import { capturePhoto, deniedMessage, type CaptureSource } from "@/visit/photos";
@@ -25,6 +26,23 @@ export function PhotoCapture({ token, checkId, result, onCaptured, onCleared }: 
 	const [busy, setBusy] = useState(false);
 	const [preview, setPreview] = useState<string | null>(null);
 	const has = Boolean(result.photo_local_id || result.photo_ref);
+
+	// Restore the thumbnail of a queued photo on revisit: the preview lives in
+	// component state, so a remount would otherwise show "Saved on this phone"
+	// with no image. The queue row still knows the file. Mirrors the web app.
+	const localId = result.photo_local_id;
+	useEffect(() => {
+		if (!localId) return;
+		let alive = true;
+		getPhoto(localId)
+			.then((photo) => {
+				if (alive && photo) setPreview(photo.file.uri);
+			})
+			.catch(() => undefined);
+		return () => {
+			alive = false;
+		};
+	}, [localId]);
 
 	async function add(source: CaptureSource) {
 		if (busy) return;

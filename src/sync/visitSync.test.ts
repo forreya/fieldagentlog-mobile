@@ -7,12 +7,13 @@ import * as SQLite from "expo-sqlite";
 import { ApiError } from "@/api/errors";
 import * as visitApi from "@/api/visit";
 import { resetDatabase } from "@/db/database";
-import { addPendingPhoto, getPhoto, pendingPhotosForToken } from "@/db/photos";
-import type { VisitRecord } from "@/db/types";
+import { addPendingPhoto, allPhotosForToken, getPhoto, pendingPhotosForToken } from "@/db/photos";
+import { deleteStoredPhoto } from "@/db/photoStore";
+import type { PendingPhoto, VisitRecord } from "@/db/types";
 import { loadVisit, saveVisit } from "@/db/visits";
 
 import { setQueueOwner } from "./owner";
-import { createVisitSource, pushVisit, readyToSubmit, visitHasWork } from "./visitSync";
+import { createVisitSource, pushVisit, readyToSubmit, sweepSubmittedVisits, visitHasWork } from "./visitSync";
 
 jest.mock("expo-sqlite");
 jest.mock("@/api/visit");
@@ -50,7 +51,7 @@ const withPhoto = (checkId: string, localId: string) => ({
 	[checkId]: { verdict: "fail" as const, note: "n", severity: "high" as const, photo_ref: null, photo_local_id: localId },
 });
 
-async function queuePhoto(localId: string, token = "tok1") {
+async function queuePhoto(localId: string, token = "tok1", over: Partial<PendingPhoto> = {}) {
 	await addPendingPhoto({
 		local_id: localId,
 		token,
@@ -58,6 +59,7 @@ async function queuePhoto(localId: string, token = "tok1") {
 		file: { uri: `file:///${localId}.jpg`, name: `${localId}.jpg`, type: "image/jpeg" },
 		ref: null,
 		created_at: Date.now(),
+		...over,
 	});
 }
 
@@ -161,7 +163,7 @@ describe("orphaned photos", () => {
 	test("a photo whose check was flipped back to Pass is dropped, not uploaded", async () => {
 		// Uploading it would spend a field worker's data on an image no one will
 		// ever open.
-		await queuePhoto("orphan");
+		await queuePhoto("orphan", "tok1", { created_at: Date.now() - 60 * 60_000 });
 		const rec = record({ results: { c1: { verdict: "pass", note: "", severity: null, photo_ref: null, photo_local_id: null } } });
 		await saveVisit(rec);
 
@@ -169,6 +171,116 @@ describe("orphaned photos", () => {
 
 		expect(api.uploadPhoto).not.toHaveBeenCalled();
 		expect(await getPhoto("orphan")).toBeUndefined();
+	});
+
+	test("a freshly captured photo is skipped, never deleted", async () => {
+		// The capture nudge starts a pass moments after the queue row is
+		// written, and the wizard's save of the answer that references it races
+		// that pass. A young unreferenced photo has to survive: the next pass
+		// will see the reference. Deleting it here would destroy the capture.
+		await queuePhoto("fresh");
+		const rec = record({ results: {} });
+		await saveVisit(rec);
+
+		await pushVisit(rec);
+
+		expect(api.uploadPhoto).not.toHaveBeenCalled();
+		expect(await getPhoto("fresh")).toBeDefined();
+	});
+});
+
+describe("a ref clobbered by a stale record save", () => {
+	test("is re-applied from the queue row, so the submit body keeps the photo", async () => {
+		// A pass uploaded the photo mid-visit and recorded the ref, then the
+		// wizard saved an in-memory copy from before the upload: the answer
+		// points at the local id again. The row still remembers the ref, so the
+		// push restores it - the old code treated the photo as dangling,
+		// cleared the reference and submitted a logbook entry with a hole.
+		await queuePhoto("p1", "tok1", { ref: "server/p1" });
+		const rec = record({ results: withPhoto("c1", "p1"), submit_requested_at: 1 });
+		await saveVisit(rec);
+
+		await pushVisit(rec);
+
+		expect(api.uploadPhoto).not.toHaveBeenCalled();
+		expect(api.submitVisit).toHaveBeenCalledTimes(1);
+		expect(api.submitVisit.mock.calls[0][1].results[0].photo_ref).toBe("server/p1");
+	});
+});
+
+describe("the database beats the snapshot", () => {
+	test("pushVisit submits the record as last saved, not as handed over", async () => {
+		// The engine lists its work at the start of a pass; the wizard may save
+		// again before the task runs. Submitting the snapshot would send answers
+		// from before that save.
+		const snapshot = record({ submit_requested_at: 1 });
+		await saveVisit(
+			record({ submit_requested_at: 1, results: { c9: { verdict: "pass", note: "", severity: null, photo_ref: null, photo_local_id: null } } }),
+		);
+
+		await pushVisit(snapshot);
+
+		expect(api.submitVisit.mock.calls[0][1].results.map((r) => r.check_id)).toEqual(["c9"]);
+	});
+});
+
+describe("after a successful submit", () => {
+	test("every photo row and file for the visit is deleted, uploaded ones included", async () => {
+		// The refs live on the server now. A row left behind would keep its file
+		// alive forever: the startup sweep preserves whatever any row references.
+		api.uploadPhoto.mockResolvedValue({ ref: "server/p1" });
+		await queuePhoto("p1");
+		await queuePhoto("done", "tok1", { ref: "server/done" });
+		const rec = record({
+			results: {
+				...withPhoto("c1", "p1"),
+				c2: { verdict: "fail", note: "n", severity: "high", photo_ref: "server/done", photo_local_id: null },
+			},
+			submit_requested_at: 1,
+		});
+		await saveVisit(rec);
+
+		await pushVisit(rec);
+
+		expect(api.submitVisit).toHaveBeenCalledTimes(1);
+		expect(await allPhotosForToken("tok1")).toHaveLength(0);
+		expect(deleteStoredPhoto).toHaveBeenCalledWith("file:///p1.jpg");
+		expect(deleteStoredPhoto).toHaveBeenCalledWith("file:///done.jpg");
+	});
+});
+
+describe("sweeping submitted visits", () => {
+	const WEEK = 7 * 24 * 60 * 60 * 1000;
+	const submittedAt = (at: number) => ({ visit_id: "v1", logbook_pdf_url: "u", completed_at: new Date(at).toISOString() });
+
+	test("an old submitted visit goes, with any photo rows still under its token", async () => {
+		await queuePhoto("leftover", "tok1", { ref: "server/leftover" });
+		const done = record({ submitted: submittedAt(1_000) });
+		await saveVisit(done);
+
+		await sweepSubmittedVisits([done], 1_000 + WEEK + 1);
+
+		expect(await loadVisit("tok1")).toBeUndefined();
+		expect(await getPhoto("leftover")).toBeUndefined();
+		expect(deleteStoredPhoto).toHaveBeenCalledWith("file:///leftover.jpg");
+	});
+
+	test("a fresh submitted visit is kept, so a reopened link shows its success screen from cache", async () => {
+		const done = record({ submitted: submittedAt(1_000) });
+		await saveVisit(done);
+
+		await sweepSubmittedVisits([done], 1_000 + WEEK - 1);
+
+		expect(await loadVisit("tok1")).toBeDefined();
+	});
+
+	test("an unsubmitted visit is never touched, however old", async () => {
+		const rec = record();
+		await saveVisit(rec);
+
+		await sweepSubmittedVisits([rec], Number.MAX_SAFE_INTEGER);
+
+		expect(await loadVisit("tok1")).toBeDefined();
 	});
 });
 
