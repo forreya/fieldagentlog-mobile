@@ -201,8 +201,10 @@ Play will not let you release until every line is green:
 ## 4. Store listing
 
 - **Short description** (80 chars) and **full description** (4000).
-- **App icon** 512x512 PNG, 32-bit, no alpha.
-- **Feature graphic** 1024x500 - Play-only, and easy to forget.
+- **App icon** 512x512 PNG, 32-bit, no alpha - `assets/store/play-icon-512.png`.
+- **Feature graphic** 1024x500 - Play-only, and easy to forget - `assets/store/feature-graphic-1024x500.png`.
+  Both live in `assets/store/`, which is upload material generated from the web repo's
+  `public/favicon.svg` (the one piece of icon artwork), not bundled into the app.
 - **Phone screenshots**: min 2, max 8, 1080p or better.
 - **Category** Business, plus contact email, website and (optional) phone.
 
