@@ -17,7 +17,9 @@ const emptyResult = { verdict: "fail", photo_local_id: null, photo_ref: null } a
 
 async function openPicker() {
 	await render(<PhotoCapture token="t" checkId="c1" result={emptyResult} onCaptured={jest.fn()} onCleared={jest.fn()} />);
-	fireEvent.press(screen.getByLabelText("Add a photo"));
+	// fireEvent is async in RNTL 14; an unawaited press leaves a dangling act()
+	// that stops every later render in the file from committing.
+	await fireEvent.press(screen.getByLabelText("Add a photo"));
 	const spy = Alert.alert as unknown as jest.Mock;
 	return (spy.mock.calls[0][2] as { text: string }[]).map((b) => b.text);
 }
