@@ -18,6 +18,7 @@
 		},
 		"sim": {
 			"extends": "preview",
+			"channel": "sim",
 			"ios": {
 				"simulator": true
 			}
