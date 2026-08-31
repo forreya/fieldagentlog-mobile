@@ -23,7 +23,7 @@ signing in as `appreview@genapm.com` sees three invented `ZZ REVIEW` buildings, 
 submit lands on those rather than in a real block's fire logbook. Re-run `review-sandbox.sql` in
 the SQL editor to reset the due dates after a review; it is idempotent.
 
-Still outstanding: the Play service account, listing assets, and the production declarations.
+Still outstanding: screenshots and the production declarations.
 Everything else here is history.
 
 The pre-existing state, checked the same day:
@@ -37,8 +37,11 @@ The pre-existing state, checked the same day:
 | iOS signing + identifier        | Exist. A device build signed for `com.fieldagentlog.app` finished on 12 Aug, which is only possible if EAS registered the identifier and minted a distribution cert |
 | Android upload keystore         | EAS-managed, created with the first Android build                                                                                                                   |
 
-Play still needs a **service account** before `eas submit` will work for Android; until then its
-uploads go through the console by hand.
+~~Play still needs a **service account** before `eas submit` will work for Android.~~ Done and
+verified 2026-08-31: `eas-submit@fieldagentlog-submit.iam.gserviceaccount.com` is invited in Play
+Console with release permissions on the app, and its JSON key has been stored in EAS credentials
+since 2026-08-20. Note the section-6 flow below describes Play Console's retired "API access"
+linking page - access is now granted by inviting the service account under Users and permissions.
 
 ## The three blockers we own
 
@@ -244,8 +247,8 @@ https://fieldagentlog.com/privacy (`public/privacy/index.html` in the `fieldagen
 the FieldAgent mark, and the Play 512 icon and feature graphic sit ready in `assets/store/`. In
 order:
 
-1. **Play service account** - fiddly, unrelated to anything else, and the only thing standing
-   between you and `eas submit --platform android`.
+1. ~~**Play service account**~~ Done - see the note above the three blockers; `eas submit
+   --platform android` is ready to use.
 2. **Declarations and listings** - answerable now, no build required; the listing art above is
    ready to upload.
 3. **Screenshots** - the UI is final, so these can be taken now. Simulator captures are allowed.
