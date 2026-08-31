@@ -55,3 +55,14 @@ NAV-006 cannot be marked as ever-passed until the first drill on a post-`03dea46
 `/gallery` (design gallery) and `/diagnostics` are bundled routes reachable by deep link on any
 build. Nothing sensitive is shown (Diagnostics deliberately names hosts, never keys), so this is
 cosmetic - but NAV-009 exercises them so a future change there does not crash from a cold link.
+
+### FIND-013 - Photo rows survive a Fail-to-Pass verdict change
+
+Attach a photo to a failed check, then change the verdict to Pass: the UI correctly clears the
+severity, note and photo, but the local `photos` row (and its file) survives, keeps uploading,
+and its ref stays keyed to a check that is submitted as a Pass - handing the server photo refs
+for passed checks, against the inspector guide's rule that photos must not ride into the logbook
+attached to a Pass. Reproduced twice on the 2026-08-31 simulator smoke run (v1.0.2 build 10
+code). Only occurs when a verdict is changed after a photo was attached. Fix: SET_VERDICT's
+clear-on-leaving-fail should also delete the queued photo row and file, and the submit body
+should never cite a ref for a non-fail result.
