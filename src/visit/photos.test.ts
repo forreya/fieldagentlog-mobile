@@ -1,15 +1,15 @@
 import { ImageManipulator } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 
-import { addPendingPhoto } from "@/db/photos";
-import { storePhoto } from "@/db/photoStore";
+import { addPendingPhoto, deletePhoto, getPhoto } from "@/db/photos";
+import { deleteStoredPhoto, storePhoto } from "@/db/photoStore";
 
-import { capturePhoto, downscale, MAX_EDGE } from "./photos";
+import { capturePhoto, discardPhoto, downscale, MAX_EDGE } from "./photos";
 
 jest.mock("expo-image-picker");
 jest.mock("expo-image-manipulator");
-jest.mock("@/db/photos", () => ({ addPendingPhoto: jest.fn() }));
-jest.mock("@/db/photoStore", () => ({ storePhoto: jest.fn() }));
+jest.mock("@/db/photos", () => ({ addPendingPhoto: jest.fn(), getPhoto: jest.fn(), deletePhoto: jest.fn() }));
+jest.mock("@/db/photoStore", () => ({ storePhoto: jest.fn(), deleteStoredPhoto: jest.fn() }));
 jest.mock("@/lib/id", () => ({ uuid: () => "local-1" }));
 
 const picker = ImagePicker as jest.Mocked<typeof ImagePicker>;
@@ -159,5 +159,36 @@ describe("capturePhoto", () => {
 
 		await capturePhoto("tok", "c9", "camera");
 		expect(store).toHaveBeenCalledWith(expect.objectContaining({ name: "check-c9.jpg" }));
+	});
+});
+
+describe("discardPhoto", () => {
+	const fetchRow = getPhoto as jest.MockedFunction<typeof getPhoto>;
+	const removeRow = deletePhoto as jest.MockedFunction<typeof deletePhoto>;
+	const removeFile = deleteStoredPhoto as jest.MockedFunction<typeof deleteStoredPhoto>;
+
+	beforeEach(() => {
+		fetchRow.mockReset();
+		removeRow.mockReset();
+		removeFile.mockReset();
+	});
+
+	test("deletes the stored file, then the row (FIND-013)", async () => {
+		fetchRow.mockResolvedValue({ local_id: "p1", file: { uri: "file:///photos/p1.jpg" } } as never);
+		await discardPhoto("p1");
+		expect(removeFile).toHaveBeenCalledWith("file:///photos/p1.jpg");
+		expect(removeRow).toHaveBeenCalledWith("p1");
+	});
+
+	test("a row that is already gone deletes nothing", async () => {
+		fetchRow.mockResolvedValue(undefined);
+		await discardPhoto("p1");
+		expect(removeFile).not.toHaveBeenCalled();
+		expect(removeRow).not.toHaveBeenCalled();
+	});
+
+	test("a storage failure is swallowed - a leak, not a loss", async () => {
+		fetchRow.mockRejectedValue(new Error("db locked"));
+		await expect(discardPhoto("p1")).resolves.toBeUndefined();
 	});
 });

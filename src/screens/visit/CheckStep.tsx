@@ -10,6 +10,7 @@ import { TextField } from "@/components/TextField";
 import { SeveritySelect, VerdictControl } from "@/components/VerdictControl";
 import { useSyncStatus } from "@/sync/useSyncStatus";
 import { colors, fonts, space } from "@/theme/tokens";
+import { discardPhoto } from "@/visit/photos";
 import { blockNameOf, checksOf, currentCheck, failIsComplete, resultFor, type WizardAction, type WizardState } from "@/visit/wizard";
 
 /**
@@ -61,7 +62,16 @@ export function CheckStep({ state, dispatch }: { state: WizardState; dispatch: (
 				{check.responsibility ? <Text style={styles.resp}>Responsible: {check.responsibility}</Text> : null}
 			</Card>
 
-			<VerdictControl value={result.verdict} onChange={(verdict) => dispatch({ type: "SET_VERDICT", checkId: check.id, verdict })} />
+			<VerdictControl
+				value={result.verdict}
+				onChange={(verdict) => {
+					// The reducer clears the answer's photo reference on leaving Fail;
+					// the queued file and row must go with it, or the bytes upload for
+					// a check that no longer cites them (FIND-013).
+					if (verdict !== "fail" && result.photo_local_id) void discardPhoto(result.photo_local_id);
+					dispatch({ type: "SET_VERDICT", checkId: check.id, verdict });
+				}}
+			/>
 
 			{isFail ? <FailDetail state={state} dispatch={dispatch} checkId={check.id} /> : null}
 		</Screen>

@@ -35,7 +35,9 @@ export function buildSubmitBody(record: VisitRecord, now: Date = new Date()): Su
 		// Severity belongs only to a failure - a passed check with a leftover
 		// severity would be nonsense in the logbook.
 		if (answer.verdict === "fail" && answer.severity) entry.severity = SEVERITY_WIRE[answer.severity];
-		if (answer.photo_ref) entry.photo_ref = answer.photo_ref;
+		// A photo is failure evidence, same rule as severity: a ref that
+		// survived a verdict change must not ride into the logbook on a Pass.
+		if (answer.verdict === "fail" && answer.photo_ref) entry.photo_ref = answer.photo_ref;
 		results.push(entry);
 	}
 

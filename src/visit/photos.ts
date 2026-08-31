@@ -19,8 +19,8 @@ import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 
 import type { LocalFile } from "@/api/contract";
-import { addPendingPhoto } from "@/db/photos";
-import { storePhoto } from "@/db/photoStore";
+import { addPendingPhoto, deletePhoto, getPhoto } from "@/db/photos";
+import { deleteStoredPhoto, storePhoto } from "@/db/photoStore";
 import { uuid } from "@/lib/id";
 
 /** Long edge cap. Comfortably past what any reviewer needs to see a fault. */
@@ -127,6 +127,24 @@ export async function capturePhoto(token: string, checkId: string, source: Captu
 		// system talking ("The operation couldn't be completed. (OSStatus error
 		// -1.)"), which names nothing a person can act on.
 		return { status: "failed", message: "Couldn't add that photo. Try again." };
+	}
+}
+
+/**
+ * Remove a queued photo that nothing cites any more - removed, replaced, or
+ * its check stopped being a failure (FIND-013). Without this the row keeps
+ * uploading for an answer that no longer names it. File before row, so a
+ * failure between the two leaves a row the post-submit cleanup still finds;
+ * best-effort overall, because a leaked file is the startup sweep's job.
+ */
+export async function discardPhoto(localId: string): Promise<void> {
+	try {
+		const photo = await getPhoto(localId);
+		if (!photo) return;
+		deleteStoredPhoto(photo.file.uri);
+		await deletePhoto(localId);
+	} catch {
+		// A leak, not a loss: the sweep and post-submit cleanup get it later.
 	}
 }
 

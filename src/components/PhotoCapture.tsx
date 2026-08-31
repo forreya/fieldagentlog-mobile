@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View }
 import { getPhoto } from "@/db/photos";
 import type { CheckResult } from "@/db/types";
 import { colors, fonts, radii, space, TAP } from "@/theme/tokens";
-import { capturePhoto, deniedMessage, type CaptureSource } from "@/visit/photos";
+import { capturePhoto, deniedMessage, discardPhoto, type CaptureSource } from "@/visit/photos";
 
 interface Props {
 	token: string;
@@ -46,12 +46,15 @@ export function PhotoCapture({ token, checkId, result, onCaptured, onCleared }: 
 
 	async function add(source: CaptureSource) {
 		if (busy) return;
+		// A replacement orphans the previous queue row unless it goes too.
+		const replaced = result.photo_local_id;
 		setBusy(true);
 		const outcome = await capturePhoto(token, checkId, source);
 		setBusy(false);
 
 		switch (outcome.status) {
 			case "captured":
+				if (replaced && replaced !== outcome.localId) void discardPhoto(replaced);
 				setPreview(outcome.file.uri);
 				onCaptured(outcome.localId);
 				return;
@@ -89,6 +92,7 @@ export function PhotoCapture({ token, checkId, result, onCaptured, onCleared }: 
 			uploaded={Boolean(result.photo_ref)}
 			onReplace={choose}
 			onRemove={() => {
+				if (result.photo_local_id) void discardPhoto(result.photo_local_id);
 				setPreview(null);
 				onCleared();
 			}}

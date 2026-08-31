@@ -65,4 +65,6 @@ for passed checks, against the inspector guide's rule that photos must not ride 
 attached to a Pass. Reproduced twice on the 2026-08-31 simulator smoke run (v1.0.2 build 10
 code). Only occurs when a verdict is changed after a photo was attached. Fix: SET_VERDICT's
 clear-on-leaving-fail should also delete the queued photo row and file, and the submit body
-should never cite a ref for a non-fail result.
+should never cite a ref for a non-fail result. Fixed 2026-08-31: detaching a photo (verdict
+change, Remove, Replace) now discards its row and file, and both submit builders (mobile and
+web, kept in step) only cite a photo_ref on a fail.

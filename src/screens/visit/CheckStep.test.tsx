@@ -4,7 +4,12 @@ import type { PacketCheck, VisitPacket } from "@/api/contract";
 import type { CheckResult, VisitRecord } from "@/db/types";
 import type { WizardState } from "@/visit/wizard";
 
+import { discardPhoto } from "@/visit/photos";
+
 import { CheckStep } from "./CheckStep";
+
+jest.mock("@/visit/photos", () => ({ capturePhoto: jest.fn(), deniedMessage: () => "denied", discardPhoto: jest.fn() }));
+jest.mock("@/db/photos", () => ({ getPhoto: jest.fn(async () => undefined) }));
 
 const check: PacketCheck = {
 	id: "c1",
@@ -87,6 +92,27 @@ describe("the verdict control", () => {
 		await render(<CheckStep state={state()} dispatch={dispatch} />);
 		fireEvent.press(screen.getByRole("radio", { name: "FAIL" }));
 		expect(dispatch).toHaveBeenCalledWith({ type: "SET_VERDICT", checkId: "c1", verdict: "fail" });
+	});
+
+	test("leaving Fail discards the queued photo row and file (FIND-013)", async () => {
+		// fireEvent is async in RNTL 14; the press kicks off the discard promise,
+		// and an unawaited press leaves a dangling act() that breaks every later
+		// render in the file.
+		(discardPhoto as jest.Mock).mockClear();
+		const dispatch = jest.fn();
+		await render(<CheckStep state={state({ verdict: "fail", photo_local_id: "p1" })} dispatch={dispatch} />);
+		await fireEvent.press(screen.getByRole("radio", { name: "PASS" }));
+		expect(discardPhoto).toHaveBeenCalledWith("p1");
+		expect(dispatch).toHaveBeenCalledWith({ type: "SET_VERDICT", checkId: "c1", verdict: "pass" });
+	});
+
+	test("re-choosing Fail, or leaving it with no photo, discards nothing", async () => {
+		(discardPhoto as jest.Mock).mockClear();
+		await render(<CheckStep state={state({ verdict: "fail", photo_local_id: "p1" })} dispatch={jest.fn()} />);
+		await fireEvent.press(screen.getByRole("radio", { name: "FAIL" }));
+		await render(<CheckStep state={state({ verdict: "fail" })} dispatch={jest.fn()} />);
+		await fireEvent.press(screen.getByRole("radio", { name: "N/A" }));
+		expect(discardPhoto).not.toHaveBeenCalled();
 	});
 });
 

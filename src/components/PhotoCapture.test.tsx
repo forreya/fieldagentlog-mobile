@@ -7,12 +7,14 @@ import { Alert, Platform } from "react-native";
 
 import { getPhoto } from "@/db/photos";
 import type { CheckResult } from "@/db/types";
+import { discardPhoto } from "@/visit/photos";
 
 import { PhotoCapture } from "./PhotoCapture";
 
 jest.mock("@/visit/photos", () => ({
 	capturePhoto: jest.fn(),
 	deniedMessage: () => "denied",
+	discardPhoto: jest.fn(),
 }));
 jest.mock("@/db/photos", () => ({
 	getPhoto: jest.fn(),
@@ -81,4 +83,17 @@ test("a queued photo's thumbnail is restored on revisit", async () => {
 	// expo-image normalises `source` to an array.
 	expect(image.props.source).toEqual([{ uri: "file:///photos/p1.jpg" }]);
 	expect(getPhoto).toHaveBeenCalledWith("p1");
+});
+
+test("Remove discards the queued row and file before clearing the answer (FIND-013)", async () => {
+	(discardPhoto as jest.Mock).mockClear();
+	(getPhoto as jest.Mock).mockResolvedValue(undefined);
+	const onCleared = jest.fn();
+	const queued = { verdict: "fail", photo_local_id: "p1", photo_ref: null } as unknown as CheckResult;
+
+	await render(<PhotoCapture token="t" checkId="c1" result={queued} onCaptured={jest.fn()} onCleared={onCleared} />);
+	await fireEvent.press(screen.getByLabelText("Remove photo"));
+
+	expect(discardPhoto).toHaveBeenCalledWith("p1");
+	expect(onCleared).toHaveBeenCalled();
 });

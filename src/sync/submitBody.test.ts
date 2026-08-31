@@ -72,6 +72,11 @@ describe("results", () => {
 		expect(body.results[0].photo_ref).toBe("visits/x.jpg");
 		expect(JSON.stringify(body)).not.toContain("local-1");
 	});
+
+	test("a photo ref that survived a verdict change never rides on a non-fail (FIND-013)", () => {
+		const body = buildSubmitBody(record({ results: { c1: answer({ verdict: "pass", photo_ref: "visits/x.jpg" }) } }), NOW);
+		expect(body.results[0]).not.toHaveProperty("photo_ref");
+	});
 });
 
 describe("fire risk assessment updates", () => {
