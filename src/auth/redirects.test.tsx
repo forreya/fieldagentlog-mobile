@@ -9,6 +9,7 @@ import { render, screen } from "@testing-library/react-native";
 
 // Safe above the jest.mock calls below: babel hoists those above every import.
 import Landing from "../app/index";
+import { setPendingBlockId, takePendingBlockId } from "../lib/pendingLink";
 import { LoginScreen } from "../screens/auth/LoginScreen";
 
 import type { AuthState } from "./AuthProvider";
@@ -22,7 +23,7 @@ jest.mock("@/sync/useSyncStatus", () => ({ useSyncStatus: () => ({ online: true,
 jest.mock("expo-router", () => {
 	const { Text } = jest.requireActual("react-native");
 	return {
-		Redirect: ({ href }: { href: string }) => <Text>redirect:{String(href)}</Text>,
+		Redirect: ({ href }: { href: unknown }) => <Text>redirect:{typeof href === "string" ? href : JSON.stringify(href)}</Text>,
 		Link: ({ children }: { children: React.ReactNode }) => <Text>{children}</Text>,
 		router: { back: jest.fn(), push: jest.fn(), replace: jest.fn() },
 	};
@@ -30,12 +31,27 @@ jest.mock("expo-router", () => {
 
 const user = { id: "u1", email: "sam@company.co.uk" } as Extract<AuthState, { status: "signed_in" }>["user"];
 
+beforeEach(() => {
+	takePendingBlockId();
+});
+
 test("signing in moves you off the login screen", async () => {
 	mockState.current = { status: "signed_in", user, role: "agent" };
 	await render(<LoginScreen />);
 
-	expect(screen.getByText(/redirect:/)).toBeTruthy();
+	expect(screen.getByText("redirect:/(app)")).toBeTruthy();
 	expect(screen.queryByText("Sign in")).toBeNull();
+});
+
+test("a block poster scanned while signed out is opened after signing in, once", async () => {
+	// The /b/ route parked the block id on its way to /login; the login screen
+	// is the only thing between the scan and the block.
+	setPendingBlockId("b1");
+	mockState.current = { status: "signed_in", user, role: "agent" };
+	await render(<LoginScreen />);
+
+	expect(screen.getByText(`redirect:${JSON.stringify({ pathname: "/(app)/block/[id]", params: { id: "b1" } })}`)).toBeTruthy();
+	expect(takePendingBlockId()).toBeNull();
 });
 
 test("an unresolved persona still leaves the login screen, so it can be explained", async () => {

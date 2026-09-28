@@ -48,6 +48,21 @@
 						"BROWSABLE",
 						"DEFAULT"
 					]
+				},
+				{
+					"action": "VIEW",
+					"autoVerify": true,
+					"data": [
+						{
+							"scheme": "https",
+							"host": "fieldagentlog.com",
+							"pathPrefix": "/b/"
+						}
+					],
+					"category": [
+						"BROWSABLE",
+						"DEFAULT"
+					]
 				}
 			]
 		},

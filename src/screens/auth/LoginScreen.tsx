@@ -1,4 +1,4 @@
-import { Redirect, router } from "expo-router";
+import { Redirect, router, type Href } from "expo-router";
 
 import { goBack } from "@/lib/nav";
 import { useState } from "react";
@@ -8,9 +8,17 @@ import { useAuth } from "@/auth/AuthProvider";
 import { Button } from "@/components/Button";
 import { Card, Screen } from "@/components/Screen";
 import { TextField } from "@/components/TextField";
+import { takePendingBlockId } from "@/lib/pendingLink";
 import { colors, fonts, space } from "@/theme/tokens";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Where a signed-in person goes from here: the block a poster scan parked on
+ *  its way to this screen (see /b/[id]), or the signed-in home. */
+function afterSignIn(): Href {
+	const blockId = takePendingBlockId();
+	return blockId ? { pathname: "/(app)/block/[id]", params: { id: blockId } } : "/(app)";
+}
 
 /**
  * Sign in - for staff, field agents and cleaners.
@@ -48,7 +56,7 @@ export function LoginScreen() {
 		if (result.error) setError(result.error);
 	}
 
-	if (state.status === "signed_in" || state.status === "role_unknown") return <Redirect href="/(app)" />;
+	if (state.status === "signed_in" || state.status === "role_unknown") return <Redirect href={afterSignIn()} />;
 
 	return (
 		<Screen
