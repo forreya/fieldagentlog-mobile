@@ -4,7 +4,7 @@ Registration to first public version, then the routine loop.
 
 **Where we are (2026-09-28): public on both stores since `1.0.2 (11)`; `1.0.3 (14)` is in review.**
 Stages 0-5 are done and stage 6 is the loop being followed; stage 5 below is kept as the record of what
-remains, gated on the console work listed at the bottom of `store-setup.md`.
+the first public release needed.
 
 Gena Go's runbook (`../../gena-mobile/README.md`) is the reference for anything not covered here.
 We deliberately differ in three places - **don't "fix" these back**:
