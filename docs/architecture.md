@@ -43,14 +43,16 @@ No linking prefixes are configured: Expo Router routes any incoming URL by path
 alone. What the OS needs is the claim - `associatedDomains` (iOS) and an
 `autoVerify` intent filter per path prefix (`/v/` and `/b/`, Android), both in
 `app.json` - plus the association files served from the `fieldagent` repo's
-`public/.well-known/`. Until those are filled in and deployed, a tapped link
-opens the browser and the enter-a-code screen is the way in.
+`public/.well-known/`. Those carry the live identifiers, so a tapped link opens
+the app once the OS has re-verified the install; the enter-a-code screen is the
+way in when it does not.
 
 A block poster's QR is `https://fieldagentlog.com/b/<block id>` and reaches
 `/b/[id]`, which sits outside the `(app)` guard. Signed in, it redirects to the
 block screen; signed out, it parks the id in `src/lib/pendingLink.ts` (memory
 only, honoured once) and sends you to `/login`, which opens the block instead
-of the home screen once you are in.
+of the home screen once you are in. The iOS `/b/*` claim is deployed only once
+the store build with this route is live (`fieldagent/docs/app-links.md`).
 
 ## How a capture reaches the server
 
