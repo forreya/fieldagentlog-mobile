@@ -2,8 +2,8 @@
 
 Registration to first public version, then the routine loop.
 
-**Where we are (2026-08-30): `1.0.1 (9)` is on TestFlight and on Play's internal track.** Stages
-0-4 are done and stage 6 is the loop being followed; stage 5 - the public submission - is what
+**Where we are (2026-09-28): public on both stores since `1.0.2 (11)`; `1.0.3 (14)` is in review.**
+Stages 0-5 are done and stage 6 is the loop being followed; stage 5 below is kept as the record of what
 remains, gated on the console work listed at the bottom of `store-setup.md`.
 
 Gena Go's runbook (`../../gena-mobile/README.md`) is the reference for anything not covered here.
@@ -135,7 +135,11 @@ Production > create release > roll out.
 
    The commit must be the HEAD you meant to ship.
 
-7. `eas submit --platform ios --latest` and `eas submit --platform android --latest`
+7. `eas submit --platform ios --latest` and `eas submit --platform android --latest --profile internal`.
+   The Play service account can only release to testing tracks, so the `production` submit profile
+   (`track: production`, draft) is refused with "missing the necessary permissions"; upload to the
+   internal track and **Promote release > Production** in Play Console instead, or grant the account
+   production release permission under Users and permissions.
 8. Release notes: see `../../.claude/skills/release-note-writing` for the house style (one note
    serves both stores; keep under Play's 500-char limit). Two Play specifics: the notes box is
    pre-filled with a **template**, not a placeholder - clear it or it publishes verbatim; and the

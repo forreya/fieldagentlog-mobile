@@ -23,7 +23,7 @@ signing in as `appreview@genapm.com` sees three invented `ZZ REVIEW` buildings, 
 submit lands on those rather than in a real block's fire logbook. Re-run `review-sandbox.sql` in
 the SQL editor to reset the due dates after a review; it is idempotent.
 
-Still outstanding: screenshots and the production declarations.
+Screenshots and the production declarations were completed before the `1.0.2` public release.
 Everything else here is history.
 
 The pre-existing state, checked the same day:

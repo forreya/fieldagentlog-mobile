@@ -51,5 +51,5 @@ Where the app stands today:
 - **Dev server:** `npm start` against a simulator/device.
 - **Internal build:** `eas build --profile preview --platform ios|android` - signed
   internal-distribution build against production BalanceBuddy.
-- **On the stores:** `1.0.1 (9)` on TestFlight and Play's internal track. Public submission is
-  pending - what remains is in [docs/store-setup.md](docs/store-setup.md).
+- **On the stores:** public on the App Store and Play since `1.0.2 (11)`; `1.0.3 (14)` submitted
+  for review on both on 2026-09-28. The release loop is [docs/releasing.md](docs/releasing.md).
