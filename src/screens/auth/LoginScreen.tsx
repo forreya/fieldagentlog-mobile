@@ -20,6 +20,13 @@ function afterSignIn(): Href {
 	return blockId ? { pathname: "/(app)/block/[id]", params: { id: blockId } } : "/(app)";
 }
 
+/** Backing out without signing in forgets the scanned block too, so it cannot
+ *  open for whoever signs in later in the same process. */
+function backOut(): void {
+	takePendingBlockId();
+	goBack("/");
+}
+
 /**
  * Sign in - for staff, field agents and cleaners.
  *
@@ -64,7 +71,7 @@ export function LoginScreen() {
 			sub="Staff, field agents and cleaners"
 			footer={
 				<>
-					<Button label="Back" variant="ghostDark" onPress={() => goBack("/")} />
+					<Button label="Back" variant="ghostDark" onPress={backOut} />
 					<Button label="Sign in" busy={busy} onPress={() => void submit()} style={styles.grow} />
 				</>
 			}

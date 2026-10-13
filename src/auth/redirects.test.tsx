@@ -5,7 +5,7 @@
 // IN. Signing in succeeded - token issued, role resolved - and left you looking
 // at the login form. Found the first time the app ran against a real backend.
 
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
 // Safe above the jest.mock calls below: babel hoists those above every import.
 import Landing from "../app/index";
@@ -25,7 +25,7 @@ jest.mock("expo-router", () => {
 	return {
 		Redirect: ({ href }: { href: unknown }) => <Text>redirect:{typeof href === "string" ? href : JSON.stringify(href)}</Text>,
 		Link: ({ children }: { children: React.ReactNode }) => <Text>{children}</Text>,
-		router: { back: jest.fn(), push: jest.fn(), replace: jest.fn() },
+		router: { back: jest.fn(), push: jest.fn(), replace: jest.fn(), canGoBack: () => false },
 	};
 });
 
@@ -51,6 +51,15 @@ test("a block poster scanned while signed out is opened after signing in, once",
 	await render(<LoginScreen />);
 
 	expect(screen.getByText(`redirect:${JSON.stringify({ pathname: "/(app)/block/[id]", params: { id: "b1" } })}`)).toBeTruthy();
+	expect(takePendingBlockId()).toBeNull();
+});
+
+test("backing out of the login screen forgets the scanned block", async () => {
+	setPendingBlockId("b1");
+	mockState.current = { status: "signed_out" };
+	await render(<LoginScreen />);
+
+	fireEvent.press(screen.getByText("Back"));
 	expect(takePendingBlockId()).toBeNull();
 });
 
