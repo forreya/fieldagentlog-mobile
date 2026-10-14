@@ -172,6 +172,16 @@ production bundle. Per-platform `-p` dates from when a vestigial web target
 made `--platform all` fail on expo-sqlite; the target went in the build 10
 cleanup, but per-platform is what has been verified to work.
 
+**Check the fingerprint before trusting a publish.** `eas.json` counts towards
+the fingerprint, so a submit-profile edit after the last build is enough for an
+update to be computed against a runtime no phone has (this happened on 13
+October 2026: the update sat unused for a day). After publishing, compare the
+`Runtime version` it prints with `eas build:list`; if they differ,
+`eas fingerprint:compare <build> <update>` names the file. To republish against
+the live build, commit that file as it was at the build's commit on a throwaway
+branch (`eas update` refuses a dirty tree), publish, then return to `main` and
+delete the branch.
+
 ### When it lands
 
 Never mid-use. The rule is the web's (`fieldagent/src/lib/pwa.ts`), reached by a
