@@ -135,11 +135,13 @@ Production > create release > roll out.
 
    The commit must be the HEAD you meant to ship.
 
-7. `eas submit --platform ios --latest` and `eas submit --platform android --latest --profile internal`.
-   The Play service account can only release to testing tracks, so the `production` submit profile
-   (`track: production`, draft) is refused with "missing the necessary permissions"; upload to the
-   internal track and **Promote release > Production** in Play Console instead, or grant the account
-   production release permission under Users and permissions.
+7. `eas submit --platform ios --latest` and `eas submit --platform android --latest`. The Android
+   `production` profile uploads a draft production release; roll it out in Play Console. Until
+   15 October 2026 the Play service account could only release to testing tracks, so that profile
+   was refused with "missing the necessary permissions" and releases went through `--profile
+   internal` and **Promote release > Production**. It now has the production release permission
+   (Users and permissions > eas-submit@fieldagentlog-submit > FieldAgentLog > Releases), so the
+   internal profile is only for a build that should not reach production.
 8. Release notes: see `../../.claude/skills/release-note-writing` for the house style (one note
    serves both stores; keep under Play's 500-char limit). Two Play specifics: the notes box is
    pre-filled with a **template**, not a placeholder - clear it or it publishes verbatim; and the
